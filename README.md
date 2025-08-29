@@ -136,7 +136,7 @@ This project is open source and available under the [MIT License](LICENSE).
 ## 🔗 Links
 
 - **Repository**: https://github.com/futurita/inifinite-tools.git
-- **Live Demo**: [Coming Soon]
+- **Live Demo**: https://futurita.github.io/inifinite-tools/
 
 ---
 
