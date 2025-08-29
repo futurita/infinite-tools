@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Image Editor — Infinite Tool</title>
+	<style>
+		:root {
+			--bg: #ffffff;
+			--text: #222;
+			--muted: #666;
+			--border: #e9e9e9;
+			--accent: #222;
+			--hover: #f8f8f8;
+			--shadow: 0 2px 8px rgba(0,0,0,0.1);
+			--shadow-hover: 0 4px 16px rgba(0,0,0,0.15);
+			--primary: #F89344;
+			--secondary: #FF642F;
+		}
+		body { 
+			font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; 
+			margin: 0;
+			color: var(--text);
+			background: var(--bg);
+			line-height: 1.6;
+		}
+		.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+		.ad-space-left { position: fixed; left: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-right: 1px solid var(--border); z-index: 5; }
+		.ad-space-right { position: fixed; right: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-left: 1px solid var(--border); z-index: 5; }
+		.main-content { margin-left: 160px; margin-right: 160px; }
+		@media (max-width: 1200px) {
+			.ad-space-left, .ad-space-right { display: none; }
+			.main-content { margin-left: 0; margin-right: 0; }
+		}
+		h1 { font-size: 28px; margin: 0 0 24px; font-weight: 600; }
+		
+		/* Navigation */
+		.navbar { 
+			position: sticky; 
+			top: 0; 
+			background: var(--bg); 
+			z-index: 10; 
+			border-bottom: 1px solid var(--border); 
+			padding: 16px 0; 
+			margin-bottom: 24px; 
+		}
+		.nav { 
+			display: flex; 
+			align-items: center; 
+			gap: 16px; 
+		}
+		.nav .brand { 
+			font-weight: 600; 
+			font-size: 18px;
+		}
+		.nav a { 
+			color: var(--text); 
+			text-decoration: none; 
+			border: 1px solid var(--border); 
+			padding: 8px 16px; 
+			border-radius: 6px;
+			transition: all 0.2s ease;
+		}
+		.nav a:hover {
+			background: var(--hover);
+			border-color: var(--primary);
+		}
+		
+		/* Main Layout */
+		.editor-layout {
+			display: grid;
+			grid-template-columns: 300px 1fr;
+			gap: 24px;
+			height: calc(100vh - 200px);
+			min-height: 600px;
+		}
+		
+		/* Sidebar */
+		.sidebar {
+			background: var(--hover);
+			border-radius: 12px;
+			padding: 20px;
+			overflow-y: auto;
+		}
+		.sidebar-section {
+			margin-bottom: 24px;
+		}
+		.sidebar-section h3 {
+			font-size: 16px;
+			margin: 0 0 12px;
+			color: var(--text);
+			font-weight: 600;
+		}
+		
+		/* Canvas Area */
+		.canvas-area {
+			background: var(--hover);
+			border-radius: 12px;
+			padding: 20px;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			position: relative;
+		}
+		.canvas-container {
+			position: relative;
+			border: 2px solid var(--border);
+			border-radius: 8px;
+			overflow: hidden;
+			background: #fff;
+			box-shadow: var(--shadow);
+		}
+		#canvas {
+			display: block;
+			max-width: 100%;
+			max-height: 100%;
+		}
+		.canvas-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			pointer-events: none;
+			z-index: 10;
+		}
+		
+		/* Drop Zone */
+		.drop-zone {
+			border: 3px dashed var(--border);
+			border-radius: 16px;
+			padding: 60px 20px;
+			text-align: center;
+			background: var(--hover);
+			transition: all 0.3s ease;
+			cursor: pointer;
+			margin-bottom: 24px;
+			position: relative;
+		}
+		.drop-zone.dragover {
+			border-color: var(--primary);
+			background: rgba(248, 147, 68, 0.05);
+			transform: scale(1.02);
+		}
+		.drop-zone .icon {
+			font-size: 48px;
+			margin-bottom: 16px;
+			opacity: 0.6;
+		}
+		.drop-zone .text {
+			font-size: 18px;
+			font-weight: 500;
+			margin-bottom: 8px;
+			color: var(--text);
+		}
+		.drop-zone .subtext {
+			font-size: 14px;
+			color: var(--muted);
+		}
+		.drop-zone input[type="file"] {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			opacity: 0;
+			cursor: pointer;
+			pointer-events: none;
+		}
+		
+		/* Controls */
+		.control-group {
+			margin-bottom: 16px;
+		}
+		.control-group label {
+			display: block;
+			font-size: 14px;
+			color: var(--text);
+			font-weight: 500;
+			margin-bottom: 8px;
+		}
+		input[type="range"], input[type="number"] {
+			width: 100%;
+			padding: 8px 12px;
+			border: 2px solid var(--border);
+			outline: none;
+			background: var(--bg);
+			border-radius: 6px;
+			font-size: 14px;
+			transition: all 0.2s ease;
+		}
+		input[type="range"]:focus, input[type="number"]:focus {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px rgba(248, 147, 68, 0.1);
+		}
+		select {
+			width: 100%;
+			padding: 8px 12px;
+			border: 2px solid var(--border);
+			outline: none;
+			background: var(--bg);
+			border-radius: 6px;
+			font-size: 14px;
+			transition: all 0.2s ease;
+		}
+		select:focus {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px rgba(248, 147, 68, 0.1);
+		}
+		
+		/* Buttons */
+		.btn {
+			appearance: none;
+			border: none;
+			background: var(--accent);
+			color: #fff;
+			padding: 10px 16px;
+			cursor: pointer;
+			border-radius: 6px;
+			font-size: 14px;
+			font-weight: 500;
+			transition: all 0.2s ease;
+			margin-right: 8px;
+			margin-bottom: 8px;
+		}
+		.btn:hover:not(:disabled) {
+			transform: translateY(-1px);
+			box-shadow: var(--shadow);
+		}
+		.btn:disabled {
+			background: #999;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: none;
+		}
+		.btn-primary {
+			background: var(--primary);
+		}
+		.btn-secondary {
+			background: var(--secondary);
+		}
+		.btn-small {
+			padding: 6px 12px;
+			font-size: 12px;
+		}
+		
+		/* Tool Buttons */
+		.tool-buttons {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+			margin-bottom: 16px;
+		}
+		.tool-btn {
+			width: 40px;
+			height: 40px;
+			border: 2px solid var(--border);
+			background: var(--bg);
+			border-radius: 8px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 16px;
+			transition: all 0.2s ease;
+		}
+		.tool-btn:hover {
+			border-color: var(--primary);
+			background: var(--hover);
+		}
+		.tool-btn.active {
+			background: var(--primary);
+			color: white;
+			border-color: var(--primary);
+		}
+		
+		/* Color Picker */
+		.color-picker {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.color-picker input[type="color"] {
+			width: 40px;
+			height: 40px;
+			border: 2px solid var(--border);
+			border-radius: 6px;
+			cursor: pointer;
+		}
+		
+		/* Filter Presets */
+		.filter-presets {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 8px;
+		}
+		.filter-preset {
+			padding: 8px 12px;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			text-align: center;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			font-size: 12px;
+			font-weight: 500;
+		}
+		.filter-preset:hover {
+			background: var(--hover);
+			border-color: var(--primary);
+		}
+		.filter-preset.active {
+			background: var(--primary);
+			color: white;
+			border-color: var(--primary);
+		}
+		
+		/* Status Bar */
+		.status-bar {
+			position: absolute;
+			bottom: 8px;
+			left: 8px;
+			background: rgba(0, 0, 0, 0.7);
+			color: white;
+			padding: 4px 8px;
+			border-radius: 4px;
+			font-size: 12px;
+		}
+		
+		/* Error Box */
+		#errorBox { 
+			margin-top: 16px; 
+			padding: 16px; 
+			border: 1px solid #f1b0b7; 
+			background: #fdecef; 
+			color: #75000f; 
+			font-size: 14px; 
+			white-space: pre-wrap; 
+			display: none; 
+			border-radius: 8px;
+		}
+		
+		/* Universal nav dropdown */
+		.dropdown { 
+			position: relative; 
+			width: 320px; 
+		}
+		.dropdown input { 
+			width: 100%; 
+			padding: 10px 12px; 
+			border: 1px solid var(--border); 
+			outline: none; 
+			border-radius: 6px; 
+		}
+		.dropdown .menu { 
+			position: absolute; 
+			left: 0; 
+			right: 0; 
+			background: var(--bg); 
+			border: 1px solid var(--border); 
+			border-top: none; 
+			max-height: 280px; 
+			overflow: auto; 
+			display: none; 
+			border-radius: 0 0 6px 6px;
+			box-shadow: var(--shadow);
+		}
+		.dropdown.open .menu { 
+			display: block; 
+		}
+		.dropdown .item { 
+			padding: 10px 12px; 
+			cursor: pointer; 
+			border-top: 1px solid var(--border); 
+			transition: background 0.2s ease;
+		}
+		.dropdown .item:hover { 
+			background: var(--hover); 
+		}
+		
+		@media (max-width: 768px) {
+			.container { padding: 16px; }
+			.editor-layout { 
+				grid-template-columns: 1fr; 
+				height: auto;
+			}
+			.sidebar {
+				order: 2;
+			}
+			.canvas-area {
+				order: 1;
+				min-height: 400px;
+			}
+			.tool-buttons {
+				justify-content: center;
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="ad-space-left"></div>
+	<div class="ad-space-right"></div>
+	<div class="main-content">
+		<div class="container">
+		<div class="navbar">
+			<div class="nav">
+				<a href="index.html" class="brand">Infinite Tool</a>
+				<div class="spacer"></div>
+				<a href="index.html" title="Back to Home">← Back to Home</a>
+			</div>
+		</div>
+
+		<h1>🎨 Image Editor</h1>
+		
+		<div id="dropZone" class="drop-zone" style="display: block;">
+			<div class="icon">📁</div>
+			<div class="text">Drop image here or click to browse</div>
+			<div class="subtext">Supports PNG, JPG, GIF, SVG files</div>
+			<input id="fileInput" type="file" accept="image/*,image/svg+xml">
+		</div>
+
+		<div id="editorLayout" class="editor-layout" style="display: none;">
+			<div class="sidebar">
+				<div class="sidebar-section">
+					<h3>🖌️ Tools</h3>
+					<div class="tool-buttons">
+						<button class="tool-btn" data-tool="select" title="Select">👆</button>
+						<button class="tool-btn active" data-tool="crop" title="Crop">✂️</button>
+						<button class="tool-btn" data-tool="draw" title="Draw">✏️</button>
+						<button class="tool-btn" data-tool="text" title="Text">T</button>
+						<button class="tool-btn" data-tool="shape" title="Shape">⬜</button>
+					</div>
+				</div>
+
+				<div class="sidebar-section">
+					<h3>🎨 Drawing</h3>
+					<div class="control-group">
+						<label for="brushSize">Brush Size</label>
+						<input type="range" id="brushSize" min="1" max="50" value="5">
+					</div>
+					<div class="control-group">
+						<label>Color</label>
+						<div class="color-picker">
+							<input type="color" id="brushColor" value="#000000">
+							<span id="colorValue">#000000</span>
+						</div>
+					</div>
+				</div>
+
+				<div class="sidebar-section">
+					<h3>🔧 Adjustments</h3>
+					<div class="control-group">
+						<label for="brightness">Brightness</label>
+						<input type="range" id="brightness" min="-100" max="100" value="0">
+					</div>
+					<div class="control-group">
+						<label for="contrast">Contrast</label>
+						<input type="range" id="contrast" min="-100" max="100" value="0">
+					</div>
+					<div class="control-group">
+						<label for="saturation">Saturation</label>
+						<input type="range" id="saturation" min="-100" max="100" value="0">
+					</div>
+					<div class="control-group">
+						<label for="hue">Hue</label>
+						<input type="range" id="hue" min="-180" max="180" value="0">
+					</div>
+				</div>
+
+				<div class="sidebar-section">
+					<h3>🎭 Filters</h3>
+					<div class="filter-presets">
+						<div class="filter-preset" data-filter="none">None</div>
+						<div class="filter-preset" data-filter="grayscale">Grayscale</div>
+						<div class="filter-preset" data-filter="sepia">Sepia</div>
+						<div class="filter-preset" data-filter="invert">Invert</div>
+						<div class="filter-preset" data-filter="blur">Blur</div>
+						<div class="filter-preset" data-filter="sharpen">Sharpen</div>
+					</div>
+				</div>
+
+				<div class="sidebar-section">
+					<h3>📐 Transform</h3>
+					<div class="control-group">
+						<label for="rotation">Rotation</label>
+						<input type="range" id="rotation" min="0" max="360" value="0">
+					</div>
+					<div class="control-group">
+						<label for="scale">Scale</label>
+						<input type="range" id="scale" min="0.1" max="3" step="0.1" value="1">
+					</div>
+					<div class="control-group">
+						<label for="flip">Flip</label>
+						<select id="flip">
+							<option value="none">None</option>
+							<option value="horizontal">Horizontal</option>
+							<option value="vertical">Vertical</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="sidebar-section">
+					<h3>💾 Actions</h3>
+					<button class="btn btn-primary" id="saveBtn">💾 Save Image</button>
+					<button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
+					<button class="btn" id="undoBtn" disabled>↶ Undo</button>
+					<button class="btn" id="redoBtn" disabled>↷ Redo</button>
+					<button class="btn" id="clearElementsBtn">🗑️ Clear Elements</button>
+				</div>
+			</div>
+
+			<div class="canvas-area">
+				<div class="canvas-container">
+					<canvas id="canvas"></canvas>
+					<div class="canvas-overlay" id="overlay"></div>
+					<div class="status-bar" id="statusBar">No image loaded</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="errorBox"></div>
+	</div>
+
+	<script>
+		// Canvas and context
+		const canvas = document.getElementById('canvas');
+		const ctx = canvas.getContext('2d');
+		const overlay = document.getElementById('overlay');
+		
+		// UI elements
+		const dropZone = document.getElementById('dropZone');
+		const fileInput = document.getElementById('fileInput');
+		const editorLayout = document.getElementById('editorLayout');
+		const statusBar = document.getElementById('statusBar');
+		const errorBox = document.getElementById('errorBox');
+		
+		// Tools
+		const toolButtons = document.querySelectorAll('.tool-btn');
+		const brushSize = document.getElementById('brushSize');
+		const brushColor = document.getElementById('brushColor');
+		const colorValue = document.getElementById('colorValue');
+		
+		// Adjustments
+		const brightness = document.getElementById('brightness');
+		const contrast = document.getElementById('contrast');
+		const saturation = document.getElementById('saturation');
+		const hue = document.getElementById('hue');
+		
+		// Transform
+		const rotation = document.getElementById('rotation');
+		const scale = document.getElementById('scale');
+		const flip = document.getElementById('flip');
+		
+		// Actions
+		const saveBtn = document.getElementById('saveBtn');
+		const resetBtn = document.getElementById('resetBtn');
+		const undoBtn = document.getElementById('undoBtn');
+		const redoBtn = document.getElementById('redoBtn');
+		const clearElementsBtn = document.getElementById('clearElementsBtn');
+		
+		// State
+		let currentTool = 'crop';
+		let isDrawing = false;
+		let isSelecting = false;
+		let isCropping = false;
+		let isAddingText = false;
+		let isDrawingShape = false;
+		let lastX = 0;
+		let lastY = 0;
+		let startX = 0;
+		let startY = 0;
+		let originalImage = null;
+		let history = [];
+		let historyIndex = -1;
+		let currentImageData = null;
+		let selectionRect = null;
+		let cropRect = null;
+		let textElements = [];
+		let shapes = [];
+		let selectedTextIndex = -1;
+		let selectedShapeIndex = -1;
+		
+		// Initialize
+		initCanvas();
+		initEventListeners();
+		
+
+		
+		function initCanvas() {
+			canvas.width = 800;
+			canvas.height = 600;
+			ctx.fillStyle = '#ffffff';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			updateStatusBar();
+		}
+		
+		function initEventListeners() {
+			// File handling
+			dropZone.addEventListener('dragover', (e) => {
+				e.preventDefault();
+				dropZone.classList.add('dragover');
+			});
+			
+			dropZone.addEventListener('dragleave', (e) => {
+				e.preventDefault();
+				dropZone.classList.remove('dragover');
+			});
+			
+			dropZone.addEventListener('drop', (e) => {
+				e.preventDefault();
+				dropZone.classList.remove('dragover');
+				const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+				if (files.length > 0) {
+					loadImage(files[0]);
+				}
+			});
+			
+			dropZone.addEventListener('click', (e) => {
+				if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) {
+					fileInput.click();
+				}
+			});
+			
+			fileInput.addEventListener('change', (e) => {
+				if (e.target.files.length > 0) {
+					loadImage(e.target.files[0]);
+				}
+			});
+			
+			// Tool selection
+			toolButtons.forEach(btn => {
+				btn.addEventListener('click', () => {
+					toolButtons.forEach(b => b.classList.remove('active'));
+					btn.classList.add('active');
+					currentTool = btn.dataset.tool;
+					updateStatusBar();
+				});
+			});
+			
+			// Color picker
+			brushColor.addEventListener('change', (e) => {
+				colorValue.textContent = e.target.value;
+			});
+			
+			// Canvas events
+			canvas.addEventListener('mousedown', handleMouseDown);
+			canvas.addEventListener('mousemove', handleMouseMove);
+			canvas.addEventListener('mouseup', handleMouseUp);
+			canvas.addEventListener('mouseout', handleMouseOut);
+			canvas.addEventListener('dblclick', handleDoubleClick);
+			
+			// Adjustments
+			[brightness, contrast, saturation, hue].forEach(slider => {
+				slider.addEventListener('input', applyAdjustments);
+			});
+			
+			// Transform
+			[rotation, scale, flip].forEach(control => {
+				control.addEventListener('change', applyTransform);
+			});
+			
+			// Filter presets
+			document.querySelectorAll('.filter-preset').forEach(preset => {
+				preset.addEventListener('click', () => {
+					document.querySelectorAll('.filter-preset').forEach(p => p.classList.remove('active'));
+					preset.classList.add('active');
+					applyFilter(preset.dataset.filter);
+				});
+			});
+			
+			// Actions
+			saveBtn.addEventListener('click', saveImage);
+			resetBtn.addEventListener('click', resetImage);
+			undoBtn.addEventListener('click', undo);
+			redoBtn.addEventListener('click', redo);
+			clearElementsBtn.addEventListener('click', clearElements);
+		}
+		
+		function loadImage(file) {
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				const img = new Image();
+				img.onload = () => {
+					originalImage = img;
+					fitImageToCanvas(img);
+					saveToHistory();
+					dropZone.style.display = 'none';
+					editorLayout.style.display = 'grid';
+					updateStatusBar();
+				};
+				img.src = e.target.result;
+			};
+			reader.readAsDataURL(file);
+		}
+		
+		function fitImageToCanvas(img) {
+			const canvasAspect = canvas.width / canvas.height;
+			const imageAspect = img.width / img.height;
+			
+			let drawWidth, drawHeight, offsetX, offsetY;
+			
+			if (imageAspect > canvasAspect) {
+				drawWidth = canvas.width;
+				drawHeight = canvas.width / imageAspect;
+				offsetX = 0;
+				offsetY = (canvas.height - drawHeight) / 2;
+			} else {
+				drawHeight = canvas.height;
+				drawWidth = canvas.height * imageAspect;
+				offsetX = (canvas.width - drawWidth) / 2;
+				offsetY = 0;
+			}
+			
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = '#ffffff';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+			
+			// Redraw all elements
+			drawTextElements();
+			drawShapes();
+		}
+		
+		function getMousePos(e) {
+			const rect = canvas.getBoundingClientRect();
+			return {
+				x: e.clientX - rect.left,
+				y: e.clientY - rect.top
+			};
+		}
+		
+		function handleMouseDown(e) {
+			const pos = getMousePos(e);
+			startX = pos.x;
+			startY = pos.y;
+			lastX = pos.x;
+			lastY = pos.y;
+			
+			switch (currentTool) {
+				case 'select':
+					isSelecting = true;
+					selectionRect = { x: pos.x, y: pos.y, width: 0, height: 0 };
+					break;
+				case 'crop':
+					isCropping = true;
+					cropRect = { x: pos.x, y: pos.y, width: 0, height: 0 };
+					break;
+				case 'draw':
+					isDrawing = true;
+					break;
+				case 'text':
+					addText(pos.x, pos.y);
+					break;
+				case 'shape':
+					isDrawingShape = true;
+					break;
+			}
+		}
+		
+		function handleMouseMove(e) {
+			const pos = getMousePos(e);
+			
+			if (isDrawing && currentTool === 'draw') {
+				ctx.beginPath();
+				ctx.moveTo(lastX, lastY);
+				ctx.lineTo(pos.x, pos.y);
+				ctx.strokeStyle = brushColor.value;
+				ctx.lineWidth = brushSize.value;
+				ctx.lineCap = 'round';
+				ctx.stroke();
+				lastX = pos.x;
+				lastY = pos.y;
+			}
+			
+			if (isSelecting && currentTool === 'select') {
+				selectionRect.width = pos.x - startX;
+				selectionRect.height = pos.y - startY;
+				drawSelectionOverlay();
+			}
+			
+			if (isCropping && currentTool === 'crop') {
+				cropRect.width = pos.x - startX;
+				cropRect.height = pos.y - startY;
+				drawCropOverlay();
+			}
+			
+			if (isDrawingShape && currentTool === 'shape') {
+				drawShapePreview(pos.x, pos.y);
+			}
+		}
+		
+		function handleMouseUp(e) {
+			const pos = getMousePos(e);
+			
+			if (isSelecting && currentTool === 'select') {
+				isSelecting = false;
+				// Selection complete - could be used for copy/paste operations
+				updateStatusBar();
+			}
+			
+			if (isCropping && currentTool === 'crop') {
+				isCropping = false;
+				applyCrop();
+			}
+			
+			if (isDrawing && currentTool === 'draw') {
+				isDrawing = false;
+				saveToHistory();
+			}
+			
+			if (isDrawingShape && currentTool === 'shape') {
+				isDrawingShape = false;
+				addShape(startX, startY, pos.x, pos.y);
+			}
+		}
+		
+		function handleMouseOut(e) {
+			if (isDrawing) {
+				isDrawing = false;
+				saveToHistory();
+			}
+			if (isSelecting) isSelecting = false;
+			if (isCropping) isCropping = false;
+			if (isDrawingShape) isDrawingShape = false;
+		}
+		
+		function handleDoubleClick(e) {
+			if (currentTool === 'text') {
+				const pos = getMousePos(e);
+				addText(pos.x, pos.y);
+			}
+		}
+		
+		function drawSelectionOverlay() {
+			// Clear overlay and redraw
+			overlay.innerHTML = '';
+			if (selectionRect) {
+				const div = document.createElement('div');
+				div.style.position = 'absolute';
+				div.style.left = selectionRect.x + 'px';
+				div.style.top = selectionRect.y + 'px';
+				div.style.width = Math.abs(selectionRect.width) + 'px';
+				div.style.height = Math.abs(selectionRect.height) + 'px';
+				div.style.border = '2px dashed #007bff';
+				div.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+				div.style.pointerEvents = 'none';
+				overlay.appendChild(div);
+			}
+		}
+		
+		function drawCropOverlay() {
+			// Clear overlay and redraw
+			overlay.innerHTML = '';
+			if (cropRect) {
+				const div = document.createElement('div');
+				div.style.position = 'absolute';
+				div.style.left = cropRect.x + 'px';
+				div.style.top = cropRect.y + 'px';
+				div.style.width = Math.abs(cropRect.width) + 'px';
+				div.style.height = Math.abs(cropRect.height) + 'px';
+				div.style.border = '2px solid #dc3545';
+				div.style.backgroundColor = 'rgba(220, 53, 69, 0.1)';
+				div.style.pointerEvents = 'none';
+				overlay.appendChild(div);
+			}
+		}
+		
+		function applyCrop() {
+			if (!cropRect || Math.abs(cropRect.width) < 10 || Math.abs(cropRect.height) < 10) {
+				overlay.innerHTML = '';
+				return;
+			}
+			
+			const x = Math.min(cropRect.x, cropRect.x + cropRect.width);
+			const y = Math.min(cropRect.y, cropRect.y + cropRect.height);
+			const width = Math.abs(cropRect.width);
+			const height = Math.abs(cropRect.height);
+			
+			// Create temporary canvas for cropping
+			const tempCanvas = document.createElement('canvas');
+			const tempCtx = tempCanvas.getContext('2d');
+			tempCanvas.width = width;
+			tempCanvas.height = height;
+			
+			// Draw cropped portion
+			tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+			
+			// Resize main canvas and draw cropped image
+			canvas.width = width;
+			canvas.height = height;
+			ctx.drawImage(tempCanvas, 0, 0);
+			
+			overlay.innerHTML = '';
+			saveToHistory();
+			updateStatusBar();
+		}
+		
+		function addText(x, y) {
+			const text = prompt('Enter text:');
+			if (text) {
+				const textElement = {
+					x: x,
+					y: y,
+					text: text,
+					color: brushColor.value,
+					size: parseInt(brushSize.value) * 2,
+					font: 'Arial'
+				};
+				textElements.push(textElement);
+				drawTextElements();
+				saveToHistory();
+			}
+		}
+		
+		function drawTextElements() {
+			textElements.forEach(element => {
+				ctx.font = `${element.size}px ${element.font}`;
+				ctx.fillStyle = element.color;
+				ctx.fillText(element.text, element.x, element.y);
+			});
+		}
+		
+		function addShape(startX, startY, endX, endY) {
+			const shape = {
+				type: 'rectangle',
+				x: Math.min(startX, endX),
+				y: Math.min(startY, endY),
+				width: Math.abs(endX - startX),
+				height: Math.abs(endY - startY),
+				color: brushColor.value,
+				lineWidth: parseInt(brushSize.value)
+			};
+			shapes.push(shape);
+			drawShapes();
+			saveToHistory();
+		}
+		
+		function drawShapes() {
+			shapes.forEach(shape => {
+				ctx.strokeStyle = shape.color;
+				ctx.lineWidth = shape.lineWidth;
+				ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+			});
+		}
+		
+		function drawShapePreview(currentX, currentY) {
+			// Clear and redraw everything
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = '#ffffff';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+			if (originalImage) {
+				fitImageToCanvas(originalImage);
+			}
+			
+			drawTextElements();
+			drawShapes();
+			
+			// Draw preview shape
+			ctx.strokeStyle = brushColor.value;
+			ctx.lineWidth = parseInt(brushSize.value);
+			ctx.strokeRect(
+				Math.min(startX, currentX),
+				Math.min(startY, currentY),
+				Math.abs(currentX - startX),
+				Math.abs(currentY - startY)
+			);
+		}
+		
+		function applyAdjustments() {
+			if (!originalImage) return;
+			
+			// Redraw the original image first
+			fitImageToCanvas(originalImage);
+			
+			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+			const data = imageData.data;
+			
+			const brightnessValue = parseInt(brightness.value);
+			const contrastValue = parseInt(contrast.value);
+			const saturationValue = parseInt(saturation.value);
+			const hueValue = parseInt(hue.value);
+			
+			// Only apply adjustments if any slider has been moved from default
+			if (brightnessValue === 0 && contrastValue === 0 && saturationValue === 0 && hueValue === 0) {
+				// Redraw elements and return
+				drawTextElements();
+				drawShapes();
+				return;
+			}
+			
+			for (let i = 0; i < data.length; i += 4) {
+				let r = data[i];
+				let g = data[i + 1];
+				let b = data[i + 2];
+				
+				// Brightness adjustment
+				if (brightnessValue !== 0) {
+					r = Math.max(0, Math.min(255, r + brightnessValue));
+					g = Math.max(0, Math.min(255, g + brightnessValue));
+					b = Math.max(0, Math.min(255, b + brightnessValue));
+				}
+				
+				// Contrast adjustment
+				if (contrastValue !== 0) {
+					const factor = (259 * (contrastValue + 255)) / (255 * (259 - contrastValue));
+					r = Math.max(0, Math.min(255, factor * (r - 128) + 128));
+					g = Math.max(0, Math.min(255, factor * (g - 128) + 128));
+					b = Math.max(0, Math.min(255, factor * (b - 128) + 128));
+				}
+				
+				// Saturation adjustment
+				if (saturationValue !== 0) {
+					const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+					const factor = 1 + (saturationValue / 100);
+					r = Math.max(0, Math.min(255, gray + factor * (r - gray)));
+					g = Math.max(0, Math.min(255, gray + factor * (g - gray)));
+					b = Math.max(0, Math.min(255, gray + factor * (b - gray)));
+				}
+				
+				// Hue adjustment (simplified)
+				if (hueValue !== 0) {
+					// Convert to HSL, adjust hue, convert back to RGB
+					const hsl = rgbToHsl(r, g, b);
+					hsl[0] = (hsl[0] + hueValue) % 360;
+					if (hsl[0] < 0) hsl[0] += 360;
+					const rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+					r = rgb[0];
+					g = rgb[1];
+					b = rgb[2];
+				}
+				
+				data[i] = r;
+				data[i + 1] = g;
+				data[i + 2] = b;
+			}
+			
+			ctx.putImageData(imageData, 0, 0);
+			
+			// Redraw elements on top
+			drawTextElements();
+			drawShapes();
+		}
+		
+		// Helper functions for HSL conversion
+		function rgbToHsl(r, g, b) {
+			r /= 255;
+			g /= 255;
+			b /= 255;
+			
+			const max = Math.max(r, g, b);
+			const min = Math.min(r, g, b);
+			let h, s, l = (max + min) / 2;
+			
+			if (max === min) {
+				h = s = 0;
+			} else {
+				const d = max - min;
+				s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+				
+				switch (max) {
+					case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+					case g: h = (b - r) / d + 2; break;
+					case b: h = (r - g) / d + 4; break;
+				}
+				h /= 6;
+			}
+			
+			return [h * 360, s * 100, l * 100];
+		}
+		
+		function hslToRgb(h, s, l) {
+			h /= 360;
+			s /= 100;
+			l /= 100;
+			
+			let r, g, b;
+			
+			if (s === 0) {
+				r = g = b = l;
+			} else {
+				const hue2rgb = (p, q, t) => {
+					if (t < 0) t += 1;
+					if (t > 1) t -= 1;
+					if (t < 1/6) return p + (q - p) * 6 * t;
+					if (t < 1/2) return q;
+					if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+					return p;
+				};
+				
+				const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+				const p = 2 * l - q;
+				r = hue2rgb(p, q, h + 1/3);
+				g = hue2rgb(p, q, h);
+				b = hue2rgb(p, q, h - 1/3);
+			}
+			
+			return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+		}
+		
+		function applyFilter(filterName) {
+			if (!originalImage) return;
+			
+			// Redraw the original image first
+			fitImageToCanvas(originalImage);
+			
+			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+			const data = imageData.data;
+			
+			switch (filterName) {
+				case 'none':
+					// No filter - just redraw elements
+					break;
+				case 'grayscale':
+					for (let i = 0; i < data.length; i += 4) {
+						const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+						data[i] = gray;
+						data[i + 1] = gray;
+						data[i + 2] = gray;
+					}
+					break;
+				case 'sepia':
+					for (let i = 0; i < data.length; i += 4) {
+						const r = data[i];
+						const g = data[i + 1];
+						const b = data[i + 2];
+						data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
+						data[i + 1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
+						data[i + 2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+					}
+					break;
+				case 'invert':
+					for (let i = 0; i < data.length; i += 4) {
+						data[i] = 255 - data[i];
+						data[i + 1] = 255 - data[i + 1];
+						data[i + 2] = 255 - data[i + 2];
+					}
+					break;
+				case 'blur':
+					// Simple blur implementation
+					const tempData = new Uint8ClampedArray(data);
+					for (let y = 1; y < canvas.height - 1; y++) {
+						for (let x = 1; x < canvas.width - 1; x++) {
+							const idx = (y * canvas.width + x) * 4;
+							for (let c = 0; c < 3; c++) {
+								let sum = 0;
+								for (let dy = -1; dy <= 1; dy++) {
+									for (let dx = -1; dx <= 1; dx++) {
+										const nIdx = ((y + dy) * canvas.width + (x + dx)) * 4;
+										sum += tempData[nIdx + c];
+									}
+								}
+								data[idx + c] = sum / 9;
+							}
+						}
+					}
+					break;
+				case 'sharpen':
+					// Simple sharpen implementation
+					const tempData2 = new Uint8ClampedArray(data);
+					for (let y = 1; y < canvas.height - 1; y++) {
+						for (let x = 1; x < canvas.width - 1; x++) {
+							const idx = (y * canvas.width + x) * 4;
+							for (let c = 0; c < 3; c++) {
+								const center = tempData2[idx + c];
+								const top = tempData2[((y - 1) * canvas.width + x) * 4 + c];
+								const bottom = tempData2[((y + 1) * canvas.width + x) * 4 + c];
+								const left = tempData2[(y * canvas.width + (x - 1)) * 4 + c];
+								const right = tempData2[(y * canvas.width + (x + 1)) * 4 + c];
+								
+								const sharpened = center * 5 - top - bottom - left - right;
+								data[idx + c] = Math.max(0, Math.min(255, sharpened));
+							}
+						}
+					}
+					break;
+			}
+			
+			ctx.putImageData(imageData, 0, 0);
+			
+			// Redraw elements on top
+			drawTextElements();
+			drawShapes();
+		}
+		
+		function applyTransform() {
+			if (!originalImage) return;
+			
+			const rotationValue = parseInt(rotation.value);
+			const scaleValue = parseFloat(scale.value);
+			const flipValue = flip.value;
+			
+			// Only apply transform if any value has changed from default
+			if (rotationValue === 0 && scaleValue === 1 && flipValue === 'none') {
+				fitImageToCanvas(originalImage);
+				return;
+			}
+			
+			ctx.save();
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = '#ffffff';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+			ctx.translate(canvas.width / 2, canvas.height / 2);
+			ctx.rotate((rotationValue * Math.PI) / 180);
+			ctx.scale(scaleValue, scaleValue);
+			
+			if (flipValue === 'horizontal') {
+				ctx.scale(-1, 1);
+			} else if (flipValue === 'vertical') {
+				ctx.scale(1, -1);
+			}
+			
+			// Draw the original image with transformations
+			const canvasAspect = canvas.width / canvas.height;
+			const imageAspect = originalImage.width / originalImage.height;
+			
+			let drawWidth, drawHeight;
+			
+			if (imageAspect > canvasAspect) {
+				drawWidth = canvas.width;
+				drawHeight = canvas.width / imageAspect;
+			} else {
+				drawHeight = canvas.height;
+				drawWidth = canvas.height * imageAspect;
+			}
+			
+			ctx.drawImage(originalImage, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+			ctx.restore();
+			
+			// Redraw elements on top
+			drawTextElements();
+			drawShapes();
+		}
+		
+		function saveToHistory() {
+			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+			history = history.slice(0, historyIndex + 1);
+			history.push({
+				imageData: imageData,
+				textElements: JSON.parse(JSON.stringify(textElements)),
+				shapes: JSON.parse(JSON.stringify(shapes))
+			});
+			historyIndex = history.length - 1;
+			updateHistoryButtons();
+		}
+		
+		function undo() {
+			if (historyIndex > 0) {
+				historyIndex--;
+				const state = history[historyIndex];
+				ctx.putImageData(state.imageData, 0, 0);
+				textElements = state.textElements;
+				shapes = state.shapes;
+				updateHistoryButtons();
+			}
+		}
+		
+		function redo() {
+			if (historyIndex < history.length - 1) {
+				historyIndex++;
+				const state = history[historyIndex];
+				ctx.putImageData(state.imageData, 0, 0);
+				textElements = state.textElements;
+				shapes = state.shapes;
+				updateHistoryButtons();
+			}
+		}
+		
+		function updateHistoryButtons() {
+			undoBtn.disabled = historyIndex <= 0;
+			redoBtn.disabled = historyIndex >= history.length - 1;
+		}
+		
+		function resetImage() {
+			if (originalImage) {
+				// Clear all elements
+				textElements = [];
+				shapes = [];
+				selectionRect = null;
+				cropRect = null;
+				overlay.innerHTML = '';
+				
+				fitImageToCanvas(originalImage);
+				saveToHistory();
+				
+				// Reset controls
+				brightness.value = 0;
+				contrast.value = 0;
+				saturation.value = 0;
+				hue.value = 0;
+				rotation.value = 0;
+				scale.value = 1;
+				flip.value = 'none';
+				
+				document.querySelectorAll('.filter-preset').forEach(p => p.classList.remove('active'));
+				document.querySelector('[data-filter="none"]').classList.add('active');
+			}
+		}
+		
+		function saveImage() {
+			const link = document.createElement('a');
+			link.download = 'edited-image.png';
+			link.href = canvas.toDataURL();
+			link.click();
+		}
+		
+		function clearElements() {
+			textElements = [];
+			shapes = [];
+			selectionRect = null;
+			cropRect = null;
+			overlay.innerHTML = '';
+			
+			// Redraw canvas without elements
+			if (originalImage) {
+				fitImageToCanvas(originalImage);
+			}
+			saveToHistory();
+		}
+		
+		function updateStatusBar() {
+			const toolNames = {
+				'select': 'Select Tool - Click and drag to select area',
+				'crop': 'Crop Tool - Click and drag to crop image',
+				'draw': 'Draw Tool - Click and drag to draw',
+				'text': 'Text Tool - Click to add text',
+				'shape': 'Shape Tool - Click and drag to draw rectangle'
+			};
+			statusBar.textContent = toolNames[currentTool] || 'No tool selected';
+		}
+		
+		function logError(message, detail) {
+			const lines = [];
+			if (message) lines.push(message);
+			if (detail) lines.push(String(detail));
+			errorBox.textContent = lines.join('\n');
+			errorBox.style.display = lines.length ? 'block' : 'none';
+		}
+		</div>
+	</div>
+	</script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Infinite Tool — Home</title>
+	<style>
+		:root { 
+			--bg:#ffffff; 
+			--text:#222; 
+			--muted:#666; 
+			--border:#e9e9e9; 
+			--accent:#222; 
+			--hover:#f8f8f8;
+			--shadow: 0 2px 8px rgba(0,0,0,0.1);
+			--shadow-hover: 0 4px 16px rgba(0,0,0,0.15);
+		}
+		html, body { height: 100%; }
+		body { 
+			margin: 0; 
+			font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; 
+			background: var(--bg); 
+			color: var(--text); 
+			line-height: 1.6;
+		}
+		.container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+		.ad-space-left { position: fixed; left: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-right: 1px solid var(--border); z-index: 5; }
+		.ad-space-right { position: fixed; right: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-left: 1px solid var(--border); z-index: 5; }
+		.main-content { margin-left: 160px; margin-right: 160px; }
+		@media (max-width: 1200px) {
+			.ad-space-left, .ad-space-right { display: none; }
+			.main-content { margin-left: 0; margin-right: 0; }
+		}
+		/* Standardized Navbar */
+		.navbar { 
+			position: sticky; 
+			top: 0; 
+			background: var(--bg); 
+			z-index: 10; 
+			border-bottom: 1px solid var(--border); 
+			padding: 16px 0; 
+			margin-bottom: 24px; 
+		}
+		.nav { 
+			display: flex; 
+			align-items: center; 
+			gap: 16px; 
+			flex-wrap: wrap;
+		}
+		.nav .brand { 
+			font-weight: 600; 
+			font-size: 18px;
+			color: var(--text);
+			text-decoration: none;
+		}
+		.nav a { 
+			color: var(--text); 
+			text-decoration: none; 
+			border: 1px solid var(--border); 
+			padding: 8px 16px; 
+			border-radius: 6px;
+			transition: all 0.2s ease;
+			font-size: 14px;
+		}
+		.nav a:hover {
+			background: var(--hover);
+			border-color: var(--primary);
+		}
+		.nav .spacer { flex: 1; }
+		
+		/* Home page specific styles */
+		.search { flex: 1 1 320px; max-width: 420px; }
+		.search input { 
+			width: 100%; 
+			padding: 14px 16px; 
+			border: 2px solid var(--border); 
+			outline: none; 
+			border-radius: 8px; 
+			font-size: 14px; 
+			transition: all 0.2s ease;
+			background: var(--bg);
+		}
+		.search input:focus {
+			border-color: var(--accent);
+			box-shadow: 0 0 0 3px rgba(34, 34, 34, 0.1);
+		}
+		.category { margin-bottom: 40px; }
+		.category-title { 
+			font-size: 20px; 
+			font-weight: 600; 
+			margin: 0 0 20px; 
+			color: var(--text);
+			border-bottom: 2px solid var(--border);
+			padding-bottom: 8px;
+		}
+		.grid { 
+			display: grid; 
+			grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+			gap: 20px; 
+		}
+		.card { 
+			border: 1px solid var(--border); 
+			background: #fff; 
+			padding: 24px; 
+			text-decoration: none; 
+			color: var(--text); 
+			display: block; 
+			border-radius: 12px;
+			transition: all 0.3s ease;
+			position: relative;
+			overflow: hidden;
+		}
+		.card::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 4px;
+			background: linear-gradient(90deg, #F89344, #FF642F);
+			transform: scaleX(0);
+			transition: transform 0.3s ease;
+		}
+		.card:hover { 
+			border-color: #d8d8d8; 
+			box-shadow: var(--shadow-hover);
+			transform: translateY(-2px);
+		}
+		.card:hover::before {
+			transform: scaleX(1);
+		}
+		.card h3 { 
+			margin: 0 0 12px; 
+			font-size: 18px; 
+			font-weight: 600; 
+			color: var(--text);
+		}
+		.card p { 
+			margin: 0; 
+			color: var(--muted); 
+			font-size: 14px; 
+			line-height: 1.5; 
+		}
+		.card .icon {
+			width: 48px;
+			height: 48px;
+			margin-bottom: 16px;
+			background: linear-gradient(135deg, #F89344, #FF642F);
+			border-radius: 12px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: white;
+			font-size: 20px;
+			font-weight: bold;
+		}
+		footer { 
+			margin-top: 48px; 
+			color: var(--muted); 
+			font-size: 13px; 
+			text-align: center;
+			padding: 20px;
+			border-top: 1px solid var(--border);
+		}
+		@media (max-width: 768px) {
+			.container { padding: 24px 16px; }
+			.grid { grid-template-columns: 1fr; gap: 16px; }
+			.card { padding: 20px; }
+		}
+	</style>
+</head>
+<body>
+	<div class="ad-space-left"></div>
+	<div class="ad-space-right"></div>
+	<div class="main-content">
+		<div class="container">
+		<!-- Standardized Navbar -->
+		<div class="navbar">
+			<div class="nav">
+				<a href="index.html" class="brand">Infinite Tool</a>
+				<div class="spacer"></div>
+				<div class="search">
+					<input id="searchBox" type="text" placeholder="Search tools… (gif, pdf, compress, convert, edit)">
+				</div>
+			</div>
+		</div>
+
+		<div id="toolGrid">
+			<div class="category">
+				<h2 class="category-title">1. Image Edit</h2>
+				<div class="grid">
+					<a class="card" data-keywords="gif maker image to gif" href="gif.html">
+						<div class="icon">🎬</div>
+						<h3>GIF Maker</h3>
+						<p>Create a looping GIF from multiple images. Reorder before export.</p>
+					</a>
+					<a class="card" data-keywords="compress image optimizer resize webp jpeg png" href="compress.html">
+						<div class="icon">🗜️</div>
+						<h3>Image Compressor</h3>
+						<p>Resize and compress images (JPEG/WEBP/PNG). Download as a ZIP.</p>
+					</a>
+					<a class="card" data-keywords="edit image editor paint draw filter" href="editor.html">
+						<div class="icon">🎨</div>
+						<h3>Image Editor</h3>
+						<p>Edit images with drawing tools, filters, adjustments, and transformations.</p>
+					</a>
+					<a class="card" data-keywords="remove background transparent bg cutout segmentation" href="remove_bg.html">
+						<div class="icon">🪄</div>
+						<h3>Remove Background</h3>
+						<p>Make image backgrounds transparent on-device. Download as PNG.</p>
+					</a>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">2. File Edit</h2>
+				<div class="grid">
+					<a class="card" data-keywords="convert file format converter" href="converter.html">
+						<div class="icon">🔄</div>
+						<h3>Any File Converter</h3>
+						<p>Convert between different file formats (images, documents, audio, video).</p>
+					</a>
+					<a class="card" data-keywords="pdf merge images to pdf" href="pdf.html">
+						<div class="icon">📄</div>
+						<h3>Merge Images to PDF</h3>
+						<p>Combine images into a single PDF with page size, margin, and orientation.</p>
+					</a>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">3. Documentation</h2>
+				<div class="grid">
+					<a class="card" data-keywords="pdf sign signature draw pen" href="pdf_sign.html">
+						<div class="icon">✍️</div>
+						<h3>PDF Sign</h3>
+						<p>Sign PDFs with a fixed blue pen. Download the signed PDF.</p>
+					</a>
+					<a class="card" data-keywords="black white scan grayscale pdf image b&w" href="bw_scan.html">
+						<div class="icon">🖨️</div>
+						<h3>Black & White Scan</h3>
+						<p>Drop images or PDFs to auto-convert into clean B&W scans.</p>
+					</a>
+				</div>
+			</div>
+		</div>
+
+		<footer>
+			Open-source libraries loaded via CDN. Files never leave your device.
+		</footer>
+		</div>
+	</div>
+
+	<script>
+		const searchBox = document.getElementById('searchBox');
+		const grid = document.getElementById('toolGrid');
+		const cards = Array.from(document.querySelectorAll('.card'));
+
+		function filterCards() {
+			const q = searchBox.value.trim().toLowerCase();
+			let firstVisible = null;
+			cards.forEach(card => {
+				const hay = (card.textContent + ' ' + (card.getAttribute('data-keywords')||'')).toLowerCase();
+				const show = !q || hay.includes(q);
+				card.style.display = show ? 'block' : 'none';
+				if (show && !firstVisible) firstVisible = card;
+			});
+			return firstVisible;
+		}
+
+		searchBox.addEventListener('input', filterCards);
+		searchBox.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				const first = filterCards();
+				if (first) window.location.href = first.getAttribute('href');
+			}
+		});
+	</script>
+</body>
+</html>

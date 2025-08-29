@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>GIF Maker</title>
+	<style>
+		:root {
+			--bg: #ffffff;
+			--text: #222;
+			--muted: #666;
+			--border: #e9e9e9;
+			--accent: #222;
+			--hover: #f8f8f8;
+			--shadow: 0 2px 8px rgba(0,0,0,0.1);
+			--shadow-hover: 0 4px 16px rgba(0,0,0,0.15);
+			--primary: #F89344;
+			--secondary: #FF642F;
+		}
+		body { 
+			font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; 
+			margin: 0;
+			color: var(--text);
+			background: var(--bg);
+			line-height: 1.6;
+		}
+		.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+		.ad-space-left { position: fixed; left: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-right: 1px solid var(--border); z-index: 5; }
+		.ad-space-right { position: fixed; right: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-left: 1px solid var(--border); z-index: 5; }
+		.main-content { margin-left: 160px; margin-right: 160px; }
+		@media (max-width: 1200px) {
+			.ad-space-left, .ad-space-right { display: none; }
+			.main-content { margin-left: 0; margin-right: 0; }
+		}
+		h1 { font-size: 28px; margin: 0 0 24px; font-weight: 600; }
+		
+		/* Drag and Drop Zone */
+		.drop-zone {
+			border: 3px dashed var(--border);
+			border-radius: 16px;
+			padding: 60px 20px;
+			text-align: center;
+			background: var(--hover);
+			transition: all 0.3s ease;
+			cursor: pointer;
+			margin-bottom: 24px;
+			position: relative;
+		}
+		.drop-zone.dragover {
+			border-color: var(--primary);
+			background: rgba(248, 147, 68, 0.05);
+			transform: scale(1.02);
+		}
+		.drop-zone .icon {
+			font-size: 48px;
+			margin-bottom: 16px;
+			opacity: 0.6;
+		}
+		.drop-zone .text {
+			font-size: 18px;
+			font-weight: 500;
+			margin-bottom: 8px;
+			color: var(--text);
+		}
+		.drop-zone .subtext {
+			font-size: 14px;
+			color: var(--muted);
+		}
+		.drop-zone input[type="file"] {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			opacity: 0;
+			cursor: pointer;
+		}
+		
+		.controls { 
+			display: grid; 
+			grid-template-columns: 1fr; 
+			gap: 16px; 
+			margin: 24px 0; 
+			align-items: end; 
+			max-width: 300px;
+		}
+		label { 
+			font-size: 14px; 
+			color: var(--text); 
+			font-weight: 500;
+			margin-bottom: 8px;
+			display: block;
+		}
+		input[type="number"] { 
+			width: 100%; 
+			padding: 12px 16px; 
+			border: 2px solid var(--border); 
+			outline: none; 
+			background: var(--bg); 
+			border-radius: 8px;
+			font-size: 14px;
+			transition: all 0.2s ease;
+		}
+		input[type="number"]:focus {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px rgba(248, 147, 68, 0.1);
+		}
+		button { 
+			appearance: none; 
+			border: none; 
+			background: var(--accent); 
+			color: #fff; 
+			padding: 14px 24px; 
+			cursor: pointer; 
+			border-radius: 8px;
+			font-size: 14px;
+			font-weight: 500;
+			transition: all 0.2s ease;
+		}
+		button:hover:not(:disabled) {
+			transform: translateY(-1px);
+			box-shadow: var(--shadow);
+		}
+		button:disabled { 
+			background: #999; 
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: none;
+		}
+		.note { font-size: 14px; color: var(--muted); }
+		.error { font-size: 14px; color: #dc3545; margin-left: 8px; }
+		
+		/* Row layout */
+		.row {
+			display: flex;
+			gap: 16px;
+			align-items: center;
+			flex-wrap: wrap;
+		}
+		
+		/* Thumbnail Grid */
+		#thumbList { 
+			margin-top: 24px; 
+			display: grid; 
+			grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
+			gap: 16px; 
+		}
+		.thumb { 
+			border: 2px solid var(--border); 
+			background: var(--bg); 
+			padding: 12px; 
+			display: flex; 
+			flex-direction: column; 
+			align-items: center; 
+			gap: 8px; 
+			cursor: grab; 
+			border-radius: 12px;
+			transition: all 0.2s ease;
+			position: relative;
+		}
+		.thumb:hover {
+			border-color: var(--primary);
+			box-shadow: var(--shadow);
+			transform: translateY(-2px);
+		}
+		.thumb.dragging { 
+			opacity: 0.5; 
+			transform: rotate(5deg);
+		}
+		.thumb img { 
+			width: 100%; 
+			height: 80px; 
+			object-fit: cover; 
+			border-radius: 8px;
+			background: var(--hover);
+		}
+		.thumb .meta { 
+			font-size: 12px; 
+			color: var(--text); 
+			text-align: center; 
+			word-break: break-all;
+			font-weight: 500;
+		}
+		.thumb .remove-btn {
+			position: absolute;
+			top: -8px;
+			right: -8px;
+			width: 24px;
+			height: 24px;
+			background: #dc3545;
+			color: white;
+			border: none;
+			border-radius: 50%;
+			cursor: pointer;
+			font-size: 12px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			opacity: 0;
+			transition: opacity 0.2s ease;
+		}
+		.thumb:hover .remove-btn {
+			opacity: 1;
+		}
+		
+		/* Preview */
+		.preview { 
+			margin-top: 32px; 
+			text-align: center;
+		}
+		#result { 
+			display: block; 
+			max-width: 100%; 
+			max-height: 400px; 
+			width: auto;
+			height: auto;
+			image-rendering: pixelated; 
+			border: 2px solid var(--border); 
+			border-radius: 12px;
+			background: var(--hover) no-repeat center/120px 120px url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220"><rect x="20" y="40" width="180" height="140" rx="10" ry="10" fill="%23ffffff" stroke="%23d0d0d0" stroke-width="4"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="28" fill="%23909090">GIF preview</text><text x="50%" y="66%" dominant-baseline="middle" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="16" fill="%23b0b0b0">will appear here</text></svg>'); 
+		}
+		#result.has-image { 
+			background: none; 
+			border-color: var(--primary);
+		}
+		
+		progress { 
+			width: 100%; 
+			height: 8px; 
+			border-radius: 4px;
+			background: var(--hover);
+		}
+		progress::-webkit-progress-bar {
+			background: var(--hover);
+			border-radius: 4px;
+		}
+		progress::-webkit-progress-value {
+			background: linear-gradient(90deg, var(--primary), var(--secondary));
+			border-radius: 4px;
+		}
+		
+		#errorBox { 
+			margin-top: 16px; 
+			padding: 16px; 
+			border: 1px solid #f1b0b7; 
+			background: #fdecef; 
+			color: #75000f; 
+			font-size: 14px; 
+			white-space: pre-wrap; 
+			display: none; 
+			border-radius: 8px;
+		}
+		
+		/* Universal nav */
+		.navbar { 
+			position: sticky; 
+			top: 0; 
+			background: var(--bg); 
+			z-index: 10; 
+			border-bottom: 1px solid var(--border); 
+			padding: 16px 0; 
+			margin-bottom: 24px; 
+		}
+		.nav { 
+			display: flex; 
+			align-items: center; 
+			gap: 16px; 
+		}
+		.nav .brand { 
+			font-weight: 600; 
+			font-size: 18px;
+		}
+		.nav a { 
+			color: var(--text); 
+			text-decoration: none; 
+			border: 1px solid var(--border); 
+			padding: 8px 16px; 
+			border-radius: 6px;
+			transition: all 0.2s ease;
+		}
+		.nav a:hover {
+			background: var(--hover);
+			border-color: var(--primary);
+		}
+		.dropdown { 
+			position: relative; 
+			width: 320px; 
+		}
+		.dropdown input { 
+			width: 100%; 
+			padding: 10px 12px; 
+			border: 1px solid var(--border); 
+			outline: none; 
+			border-radius: 6px; 
+		}
+		.dropdown .menu { 
+			position: absolute; 
+			left: 0; 
+			right: 0; 
+			background: var(--bg); 
+			border: 1px solid var(--border); 
+			border-top: none; 
+			max-height: 280px; 
+			overflow: auto; 
+			display: none; 
+			border-radius: 0 0 6px 6px;
+			box-shadow: var(--shadow);
+		}
+		.dropdown.open .menu { 
+			display: block; 
+		}
+		.dropdown .item { 
+			padding: 10px 12px; 
+			cursor: pointer; 
+			border-top: 1px solid var(--border); 
+			transition: background 0.2s ease;
+		}
+		.dropdown .item:hover { 
+			background: var(--hover); 
+		}
+		
+		@media (max-width: 768px) {
+			.container { padding: 16px; }
+			.controls { grid-template-columns: 1fr; }
+			#thumbList { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+		}
+	</style>
+</head>
+<body>
+	<div class="ad-space-left"></div>
+	<div class="ad-space-right"></div>
+	<div class="main-content">
+		<div class="container">
+		<div class="navbar">
+			<div class="nav">
+				<a href="index.html" class="brand">Infinite Tool</a>
+				<div class="spacer"></div>
+				<a href="index.html" title="Back to Home">← Back to Home</a>
+			</div>
+		</div>
+
+		<h1>🎬 GIF Maker</h1>
+		
+		<div class="drop-zone" id="dropZone">
+			<div class="icon">📁</div>
+			<div class="text">Drop images here or click to browse</div>
+			<div class="subtext">Supports PNG, JPG, GIF, SVG files</div>
+			<input id="fileInput" type="file" accept="image/*,image/svg+xml" multiple>
+		</div>
+		
+		<div class="controls">
+			<div>
+				<label for="delay">Frame delay (milliseconds)</label>
+				<input id="delay" type="number" min="1" value="120">
+			</div>
+		</div>
+		
+		<div class="row" style="margin-bottom: 24px;">
+			<button id="makeBtn" disabled>🎬 Make GIF</button>
+			<button id="downloadBtn" disabled>💾 Download GIF</button>
+			<span class="note" id="hint">Select images to begin creating your GIF.</span>
+			<span class="error" id="error"></span>
+		</div>
+		
+		<div style="margin-top:16px;">
+			<progress id="progress" value="0" max="1" style="display:none;"></progress>
+		</div>
+		
+		<div id="errorBox"></div>
+		<div id="thumbList"></div>
+		
+		<div class="preview">
+			<img id="result" alt="GIF preview will appear here" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="/>
+		</div>
+	</div>
+
+	<script>
+
+	</script>
+
+	<script>
+		const fileInput = document.getElementById('fileInput');
+		const delayInput = document.getElementById('delay');
+		const makeBtn = document.getElementById('makeBtn');
+		const downloadBtn = document.getElementById('downloadBtn');
+		const resultImg = document.getElementById('result');
+		const progressEl = document.getElementById('progress');
+		const hintEl = document.getElementById('hint');
+		const errorEl = document.getElementById('error');
+		const errorBox = document.getElementById('errorBox');
+		const thumbList = document.getElementById('thumbList');
+
+		let gifBlobUrl = null; let selectedFiles = []; let workerBlobUrl = null; let gifLibBlobUrl = null; const createdObjectUrls = new Set(); const TRANSPARENT_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+
+		function setError(msg) { errorEl.textContent = msg || ''; }
+		function logError(message, detail) { const lines = []; if (message) lines.push(message); if (detail) lines.push(String(detail)); errorBox.textContent = lines.join('\n'); errorBox.style.display = lines.length ? 'block' : 'none'; }
+		window.addEventListener('error', (e) => { logError('Runtime error', e && e.message ? e.message : 'Unknown error'); });
+		window.addEventListener('unhandledrejection', (e) => { logError('Unhandled promise rejection', e && e.reason ? (e.reason.message || String(e.reason)) : 'Unknown reason'); });
+
+		resultImg.addEventListener('load', () => { if (resultImg.src && resultImg.src !== TRANSPARENT_PX) resultImg.classList.add('has-image'); });
+		function resetPreviewPlaceholder() { resultImg.classList.remove('has-image'); resultImg.src = TRANSPARENT_PX; }
+
+		async function ensureGifLibrary() { if (window.GIF) return; const libSrc = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'; const res = await fetch(libSrc, { cache: 'force-cache' }); if (!res.ok) throw new Error('Failed to fetch gif.js: ' + res.status); const text = await res.text(); gifLibBlobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(gifLibBlobUrl); await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = gifLibBlobUrl; s.onload = resolve; s.onerror = () => reject(new Error('Script load error for gif.js')); document.head.appendChild(s); }); if (!window.GIF) throw new Error('GIF class not available after loading'); }
+		async function ensureWorker() { if (workerBlobUrl) return workerBlobUrl; const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'; const res = await fetch(workerSrc, { cache: 'force-cache' }); if (!res.ok) throw new Error('Failed to fetch gif.worker.js: ' + res.status); const text = await res.text(); workerBlobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(workerBlobUrl); return workerBlobUrl; }
+
+		// Drag and Drop functionality
+		dropZone.addEventListener('dragover', (e) => {
+			e.preventDefault();
+			dropZone.classList.add('dragover');
+		});
+		
+		dropZone.addEventListener('dragleave', (e) => {
+			e.preventDefault();
+			dropZone.classList.remove('dragover');
+		});
+		
+		dropZone.addEventListener('drop', (e) => {
+			e.preventDefault();
+			dropZone.classList.remove('dragover');
+			const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+			handleFiles(files);
+		});
+		
+		dropZone.addEventListener('click', (e) => {
+			// Only trigger file input if clicking on the drop zone itself, not on the input
+			if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) {
+				fileInput.click();
+			}
+		});
+
+		function handleFiles(files) {
+			selectedFiles = files;
+			makeBtn.disabled = selectedFiles.length === 0;
+			downloadBtn.disabled = true;
+			resetPreviewPlaceholder();
+			if (gifBlobUrl) { URL.revokeObjectURL(gifBlobUrl); gifBlobUrl = null; }
+			setError('');
+			logError('');
+			updateHint();
+			renderThumbnails();
+		}
+
+		fileInput.addEventListener('change', () => { 
+			handleFiles(Array.from(fileInput.files || []).filter(f => f.type.startsWith('image/')));
+		});
+		// Paste support: Ctrl/Cmd+V images into the page
+		window.addEventListener('paste', (e) => {
+			const items = e.clipboardData && e.clipboardData.items ? Array.from(e.clipboardData.items) : [];
+			const files = items.map(it => it.getAsFile && it.getAsFile()).filter(f => f && f.type && f.type.startsWith('image/'));
+			if (files.length) { e.preventDefault(); handleFiles(files); }
+		});
+		function updateHint() { 
+			if (selectedFiles.length === 0) { 
+				hintEl.textContent = 'Select images to begin creating your GIF.'; 
+				return; 
+			} 
+			hintEl.textContent = `${selectedFiles.length} image(s) ready. Drag to reorder, then click Make GIF.`; 
+		}
+		function fileToPreviewUrl(file) { return new Promise((resolve) => { if (file.type === 'image/svg+xml') { const reader = new FileReader(); reader.onload = e => { const blob = new Blob([e.target.result], { type: 'image/svg+xml' }); const url = URL.createObjectURL(blob); createdObjectUrls.add(url); resolve(url); }; reader.readAsText(file); } else { const url = URL.createObjectURL(file); createdObjectUrls.add(url); resolve(url); } }); }
+		async function renderThumbnails() { 
+			thumbList.innerHTML = ''; 
+			const urls = await Promise.all(selectedFiles.map(fileToPreviewUrl)); 
+			selectedFiles.forEach((file, idx) => { 
+				const d = document.createElement('div'); 
+				d.className = 'thumb'; 
+				d.draggable = true; 
+				d.dataset.index = String(idx); 
+				d.innerHTML = `
+					<img src="${urls[idx]}" onerror="this.removeAttribute('src');">
+					<div class="meta">${idx + 1}. ${file.name}</div>
+					<button class="remove-btn" onclick="removeFile(${idx})">×</button>
+				`; 
+				attachDragHandlers(d); 
+				thumbList.appendChild(d); 
+			}); 
+		}
+		
+		function removeFile(index) {
+			selectedFiles.splice(index, 1);
+			handleFiles(selectedFiles);
+		}
+		function attachDragHandlers(el) { 
+			el.addEventListener('dragstart', (e) => { 
+				el.classList.add('dragging'); 
+				e.dataTransfer.setData('text/plain', el.dataset.index); 
+				e.dataTransfer.effectAllowed = 'move'; 
+			}); 
+			el.addEventListener('dragend', () => { 
+				el.classList.remove('dragging'); 
+				refreshThumbIndices(); 
+			}); 
+			el.addEventListener('dragover', (e) => { 
+				e.preventDefault(); 
+				e.dataTransfer.dropEffect = 'move'; 
+			}); 
+			el.addEventListener('drop', (e) => { 
+				e.preventDefault(); 
+				const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10); 
+				const toIdx = parseInt(el.dataset.index, 10); 
+				if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return; 
+				const arr = selectedFiles.slice(); 
+				const [moved] = arr.splice(fromIdx, 1); 
+				arr.splice(toIdx, 0, moved); 
+				selectedFiles = arr; 
+				renderThumbnails(); 
+			}); 
+		}
+		function refreshThumbIndices() { 
+			Array.from(thumbList.children).forEach((c, i) => { 
+				c.dataset.index = String(i); 
+				const meta = c.querySelector('.meta'); 
+				if (meta) meta.textContent = `${i + 1}. ${selectedFiles[i].name}`; 
+			}); 
+		}
+
+		function parseSvgSize(svgText) { try { const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml'); const svg = doc.documentElement; let widthAttr = svg.getAttribute('width'); let heightAttr = svg.getAttribute('height'); let width = 0, height = 0; const parseLen = (v) => { if (!v) return 0; const m = String(v).trim().match(/([\d.]+)/); return m ? Math.max(0, Math.round(parseFloat(m[1]))) : 0; }; width = parseLen(widthAttr); height = parseLen(heightAttr); if ((!width || !height) && svg.hasAttribute('viewBox')) { const vb = svg.getAttribute('viewBox').trim().split(/[\s,]+/).map(Number); if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) { width = width || Math.round(vb[2]); height = height || Math.round(vb[3]); } } if (!width || !height) { width = width || 512; height = height || 512; } svg.setAttribute('width', String(width)); svg.setAttribute('height', String(height)); return { width, height, serialized: new XMLSerializer().serializeToString(svg) }; } catch (e) { logError('SVG parsing failed', e && e.message); return { width: 512, height: 512, serialized: svgText }; } }
+		function loadImageFromFile(file) { return new Promise((resolve, reject) => { if (file.type === 'image/svg+xml') { const reader = new FileReader(); reader.onerror = () => reject(new Error(`Failed to read SVG: ${file.name}`)); reader.onload = e => { const { serialized } = parseSvgSize(String(e.target.result)); const blob = new Blob([serialized], { type: 'image/svg+xml' }); const url = URL.createObjectURL(blob); createdObjectUrls.add(url); const img = new Image(); img.onload = () => resolve(img); img.onerror = () => { URL.revokeObjectURL(url); createdObjectUrls.delete(url); reject(new Error(`Failed to load SVG image: ${file.name}`)); }; img.src = url; }; reader.readAsText(file); return; } const reader = new FileReader(); reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`)); reader.onload = e => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error(`Failed to load image: ${file.name}`)); img.src = e.target.result; }; reader.readAsDataURL(file); }); }
+		function drawCentered(image, canvasWidth, canvasHeight) { const canvas = document.createElement('canvas'); canvas.width = canvasWidth; canvas.height = canvasHeight; const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvasWidth, canvasHeight); const offsetX = Math.floor((canvasWidth - image.width) / 2); const offsetY = Math.floor((canvasHeight - image.height) / 2); ctx.drawImage(image, offsetX, offsetY); return canvas; }
+
+		makeBtn.addEventListener('click', async () => { 
+			if (selectedFiles.length === 0) return; 
+			setError(''); 
+			logError(''); 
+			const delay = Math.max(1, parseInt(delayInput.value || '1', 10)); 
+			makeBtn.disabled = true; 
+			downloadBtn.disabled = true; 
+			progressEl.style.display = 'block'; 
+			progressEl.value = 0; 
+			progressEl.max = selectedFiles.length + 8; 
+			hintEl.textContent = 'Processing images...'; 
+			try { 
+				await ensureGifLibrary(); 
+				const workerUrl = await ensureWorker(); 
+				progressEl.value = 1; 
+				const results = await Promise.allSettled(selectedFiles.map(loadImageFromFile)); 
+				progressEl.value = 2; 
+				const images = []; 
+				const failures = []; 
+				results.forEach((r, idx) => { 
+					if (r.status === 'fulfilled' && r.value && r.value.width > 0 && r.value.height > 0) images.push(r.value); 
+					else failures.push((selectedFiles[idx] && selectedFiles[idx].name) + ': ' + (r.reason && r.reason.message ? r.reason.message : 'Load failed')); 
+				}); 
+				if (failures.length) logError('Some files failed to load', failures.join('\n')); 
+				if (images.length === 0) throw new Error('No images could be loaded.'); 
+				const maxWidth = Math.max(...images.map(img => img.width)) || 512; 
+				const maxHeight = Math.max(...images.map(img => img.height)) || 512; 
+				const gif = new GIF({ workers: 2, quality: 10, repeat: 0, width: maxWidth, height: maxHeight, workerScript: workerUrl }); 
+				gif.on('error', (e) => { 
+					setError('GIF encoder error'); 
+					logError('gif.js error', e && e.message ? e.message : String(e)); 
+				}); 
+				images.forEach((img, idx) => { 
+					const frameCanvas = drawCentered(img, maxWidth, maxHeight); 
+					gif.addFrame(frameCanvas, { delay }); 
+					progressEl.value = 2 + idx; 
+				}); 
+				gif.on('progress', p => { 
+					progressEl.value = 2 + images.length * p; 
+					hintEl.textContent = `Encoding GIF... ${Math.round(p * 100)}%`; 
+				}); 
+				gif.on('finished', blob => { 
+					if (gifBlobUrl) { URL.revokeObjectURL(gifBlobUrl); } 
+					gifBlobUrl = URL.createObjectURL(blob); 
+					resultImg.classList.add('has-image'); 
+					resultImg.src = gifBlobUrl; 
+					downloadBtn.disabled = false; 
+					makeBtn.disabled = false; 
+					progressEl.style.display = 'none'; 
+					setError(''); 
+					logError(''); 
+					hintEl.textContent = `Done. Size ${maxWidth}×${maxHeight}. Preview below.`; 
+				}); 
+				gif.render(); 
+			} catch (err) { 
+				console.error(err); 
+				setError(err && err.message ? err.message : 'Failed to create GIF.'); 
+				logError('Creation failed', err && err.stack ? err.stack : (err && err.message ? err.message : String(err))); 
+				progressEl.style.display = 'none'; 
+				makeBtn.disabled = false; 
+				hintEl.textContent = 'Select images to begin creating your GIF.'; 
+			} 
+		});
+		downloadBtn.addEventListener('click', () => { if (!gifBlobUrl) return; const a = document.createElement('a'); a.href = gifBlobUrl; a.download = 'loop.gif'; document.body.appendChild(a); a.click(); document.body.removeChild(a); });
+
+		window.addEventListener('unload', () => { if (gifBlobUrl) URL.revokeObjectURL(gifBlobUrl); if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl); if (gifLibBlobUrl) URL.revokeObjectURL(gifLibBlobUrl); createdObjectUrls.forEach(u => URL.revokeObjectURL(u)); createdObjectUrls.clear(); });
+		</div>
+	</div>
+	</script>
+</body>
+</html>

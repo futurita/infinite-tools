@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Tool — PDF Sign</title>
+    <style>
+        :root { 
+            --bg:#ffffff; 
+            --text:#222; 
+            --muted:#666; 
+            --border:#e9e9e9; 
+            --hover:#f8f8f8;
+            --blue:#0A66FF;
+        }
+        html, body { height: 100%; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+        .ad-space-left { position: fixed; left: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-right: 1px solid var(--border); z-index: 5; }
+        .ad-space-right { position: fixed; right: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-left: 1px solid var(--border); z-index: 5; }
+        .main-content { margin-left: 160px; margin-right: 160px; }
+        @media (max-width: 1200px) {
+            .ad-space-left, .ad-space-right { display: none; }
+            .main-content { margin-left: 0; margin-right: 0; }
+        }
+        .navbar { position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); padding: 16px 0; margin-bottom: 24px; }
+        .nav { display: flex; align-items: center; gap: 16px; }
+        .nav .brand { font-weight: 600; font-size: 18px; }
+        .nav a { color: var(--text); text-decoration: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; transition: all .2s ease; }
+        .nav a:hover { background: var(--hover); border-color: var(--primary); }
+        .dropdown { position: relative; width: 320px; }
+        .dropdown input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); outline: none; border-radius: 6px; }
+        .dropdown .menu { position: absolute; left: 0; right: 0; background: var(--bg); border: 1px solid var(--border); border-top: none; max-height: 280px; overflow: auto; display: none; border-radius: 0 0 6px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .dropdown.open .menu { display: block; }
+        .dropdown .item { padding: 10px 12px; cursor: pointer; border-top: 1px solid var(--border); transition: background 0.2s ease; }
+        .dropdown .item:hover { background: var(--hover); }
+        h1 { font-size: 22px; margin: 0 0 24px; }
+        .panel { border:1px solid var(--border); border-radius:12px; padding:20px; background:#fff; }
+        .row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+        .col { flex: 1 1 320px; }
+        .dropzone { border:2px dashed var(--border); border-radius:12px; padding:24px; text-align:center; background:#fff; }
+        .btn { display:inline-block; padding:10px 14px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; }
+        .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+        .canvaswrap { border:1px solid var(--border); border-radius:12px; overflow:hidden; background: #f9f9f9; }
+        canvas { display:block; width:100%; height:auto; }
+        .hint { color: var(--muted); font-size: 13px; }
+        .range { width: 200px; }
+        footer { margin-top: 24px; color: var(--muted); font-size: 13px; text-align:center; padding: 8px; }
+        /* Make file input reliably clickable by overlaying it on the button */
+        .filewrap { position: relative; display: inline-block; }
+        .visually-hidden { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    </style>
+    <script defer src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+</head>
+<body>
+    <div class="ad-space-left"></div>
+    <div class="ad-space-right"></div>
+    <div class="main-content">
+        <div class="container">
+        <div class="navbar">
+            <div class="nav">
+                <a href="index.html" class="brand">Infinite Tool</a>
+                <div class="spacer"></div>
+                <a href="index.html" title="Back to Home">← Back to Home</a>
+            </div>
+        </div>
+        <h1>PDF Sign</h1>
+        <div class="panel">
+            <div class="row">
+                <div class="col">
+                    <div id="dropzone" class="dropzone">
+                        <div>Drop a PDF here or</div>
+                        <div class="filewrap" style="margin-top:8px">
+                            <label class="btn" for="fileInput">Choose PDF</label>
+                            <input id="fileInput" type="file" accept="application/pdf" class="visually-hidden">
+                        </div>
+                        <div class="hint" style="margin-top:8px">Draw with a fixed blue pen. All processing is local.</div>
+                    </div>
+                    <div class="controls">
+                        <label>Pen size <input id="penSize" class="range" type="range" min="1" max="16" value="3"></label>
+                        <button id="undo" class="btn">Undo</button>
+                        <button id="redo" class="btn">Redo</button>
+                        <button id="clear" class="btn">Clear</button>
+                        <button id="download" class="btn">Download Signed PDF</button>
+                    </div>
+                </div>
+                <div class="col" style="flex:2 1 480px;">
+                    <div class="canvaswrap">
+                        <canvas id="canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer>PDF rendering and signing are done entirely in your browser.</footer>
+        </div>
+    </div>
+    <script>
+        const input = document.getElementById('fileInput');
+        const drop = document.getElementById('dropzone');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const penSize = document.getElementById('penSize');
+        const downloadBtn = document.getElementById('download');
+        const clearBtn = document.getElementById('clear');
+        const undoBtn = document.getElementById('undo');
+        const redoBtn = document.getElementById('redo');
+
+        let pdfDoc = null;
+        let currentPageIndex = 0;
+        let pdfjsDoc = null;
+        let pageViewport = null;
+        let isDrawing = false;
+        let strokes = []; // array of arrays [{x,y}], with .size on array
+        let redoStack = []; // stack of undone strokes
+        const BLUE = '#0A66FF';
+
+        function resizeCanvasToPage(width, height) {
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        async function renderPageToCanvas(pageNumber) {
+            const page = await pdfjsDoc.getPage(pageNumber);
+            pageViewport = page.getViewport({ scale: 1 });
+            resizeCanvasToPage(pageViewport.width, pageViewport.height);
+            await page.render({ canvasContext: ctx, viewport: pageViewport }).promise;
+            redraw();
+        }
+
+        async function loadPdf(arrayBuffer) {
+            const { PDFDocument } = window.PDFLib;
+            pdfDoc = await PDFDocument.load(arrayBuffer);
+            pdfjsDoc = await window['pdfjs-dist/build/pdf'].getDocument({ data: arrayBuffer }).promise;
+            await renderPageToCanvas(1);
+        }
+
+        function redraw() {
+            // background already rendered; draw strokes on top
+            ctx.strokeStyle = BLUE;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            strokes.forEach(path => {
+                if (path.length < 2) return;
+                ctx.beginPath();
+                ctx.lineWidth = path.size;
+                ctx.moveTo(path[0].x, path[0].y);
+                for (let i=1;i<path.length;i++) ctx.lineTo(path[i].x, path[i].y);
+                ctx.stroke();
+            });
+        }
+
+        async function refreshView() {
+            if (pdfjsDoc) {
+                await renderPageToCanvas(currentPageIndex + 1);
+            } else {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                redraw();
+            }
+        }
+
+        function startDraw(x,y) {
+            isDrawing = true;
+            strokes.push(Object.assign([], { size: parseInt(penSize.value,10) }));
+            strokes[strokes.length-1].push({x,y});
+            // any new drawing invalidates redo history
+            redoStack = [];
+        }
+        function moveDraw(x,y) {
+            if (!isDrawing) return;
+            strokes[strokes.length-1].push({x,y});
+            redraw();
+        }
+        function endDraw() { isDrawing = false; }
+
+        canvas.addEventListener('mousedown', e => startDraw(e.offsetX, e.offsetY));
+        canvas.addEventListener('mousemove', e => moveDraw(e.offsetX, e.offsetY));
+        window.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', e => { const t=e.touches[0]; const r=canvas.getBoundingClientRect(); startDraw(t.clientX-r.left, t.clientY-r.top); e.preventDefault(); });
+        canvas.addEventListener('touchmove', e => { const t=e.touches[0]; const r=canvas.getBoundingClientRect(); moveDraw(t.clientX-r.left, t.clientY-r.top); e.preventDefault(); });
+        window.addEventListener('touchend', endDraw);
+
+        clearBtn.addEventListener('click', async () => { strokes = []; redoStack = []; if (pdfjsDoc) { await renderPageToCanvas(currentPageIndex+1); } else { ctx.clearRect(0,0,canvas.width,canvas.height); } });
+
+        undoBtn.addEventListener('click', async () => {
+            if (strokes.length === 0) return;
+            const s = strokes.pop();
+            redoStack.push(s);
+            await refreshView();
+        });
+
+        redoBtn.addEventListener('click', async () => {
+            if (redoStack.length === 0) return;
+            const s = redoStack.pop();
+            strokes.push(s);
+            await refreshView();
+        });
+
+        // Keyboard shortcuts: Ctrl/Cmd+Z (undo), Shift+Ctrl/Cmd+Z (redo)
+        window.addEventListener('keydown', async (e) => {
+            const isMod = e.ctrlKey || e.metaKey;
+            if (!isMod) return;
+            if (e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undoBtn.click(); }
+            if (e.key.toLowerCase() === 'z' && e.shiftKey) { e.preventDefault(); redoBtn.click(); }
+        });
+
+        input.addEventListener('change', async () => {
+            const file = input.files[0]; if (!file) return;
+            const buf = await file.arrayBuffer();
+            await loadPdf(buf);
+            // allow re-selecting same file to trigger change again
+            input.value = '';
+        });
+
+        drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+        drop.addEventListener('drop', async (e) => {
+            e.preventDefault(); drop.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                const buf = await e.dataTransfer.files[0].arrayBuffer();
+                await loadPdf(buf);
+            }
+        });
+        // Paste support: Ctrl/Cmd+V PDF from clipboard
+        window.addEventListener('paste', async (e) => {
+            const dt = e.clipboardData; if (!dt) return;
+            const items = Array.from(dt.items || []);
+            const file = items.map(it => it.getAsFile && it.getAsFile()).find(f => f && f.type === 'application/pdf');
+            if (file) { e.preventDefault(); const buf = await file.arrayBuffer(); await loadPdf(buf); }
+        });
+        // Only trigger dialog when clicking outside the button/input to prevent double dialogs
+        drop.addEventListener('click', (e) => {
+            const inFileButtonArea = e.target && (e.target.id === 'fileInput' || (e.target.closest && e.target.closest('.filewrap')));
+            if (!inFileButtonArea) input.click();
+        });
+        // Prevent bubbling from input
+        input.addEventListener('click', (e) => { e.stopPropagation(); });
+        
+        
+
+        downloadBtn.addEventListener('click', async () => {
+            if (!pdfDoc) return;
+            const { rgb } = window.PDFLib;
+            const page = pdfDoc.getPage(currentPageIndex);
+            // draw strokes onto the PDF page
+            strokes.forEach(path => {
+                if (path.length < 2) return;
+                // Map canvas Y (top-left origin) to PDF Y (bottom-left origin)
+                const points = path.map(p => ({ x: p.x, y: canvas.height - p.y }));
+                for (let i=1;i<points.length;i++) {
+                    page.drawLine({ start: points[i-1], end: points[i], thickness: path.size, color: rgb(10/255, 102/255, 255/255) });
+                }
+            });
+            const bytes = await pdfDoc.save();
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'signed.pdf'; a.click();
+            setTimeout(()=>URL.revokeObjectURL(url),1000);
+        });
+    </script>
+    </body>
+    </html>
+
+

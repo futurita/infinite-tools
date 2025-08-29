@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Merge Images to PDF — Infinite Tool</title>
+	<style>
+		:root {
+			--bg: #ffffff;
+			--text: #222;
+			--muted: #666;
+			--border: #e9e9e9;
+			--hover: #f8f8f8;
+			--primary: #F89344;
+			--secondary: #FF642F;
+		}
+		body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 0; color: var(--text); background: var(--bg); line-height: 1.6; }
+		.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+		.ad-space-left { position: fixed; left: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-right: 1px solid var(--border); z-index: 5; }
+		.ad-space-right { position: fixed; right: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-left: 1px solid var(--border); z-index: 5; }
+		.main-content { margin-left: 160px; margin-right: 160px; }
+		@media (max-width: 1200px) {
+			.ad-space-left, .ad-space-right { display: none; }
+			.main-content { margin-left: 0; margin-right: 0; }
+		}
+		.navbar { position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); padding: 16px 0; margin-bottom: 24px; }
+		.nav { display: flex; align-items: center; gap: 16px; }
+		.nav .brand { font-weight: 600; font-size: 18px; }
+		.nav a { color: var(--text); text-decoration: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; transition: all .2s ease; }
+		.nav a:hover { background: var(--hover); border-color: var(--primary); }
+
+		.drop-zone { border: 3px dashed var(--border); border-radius: 16px; padding: 60px 20px; text-align: center; background: var(--hover); transition: all 0.3s ease; cursor: pointer; margin-bottom: 24px; position: relative; }
+		.drop-zone.dragover { border-color: var(--primary); background: rgba(248, 147, 68, 0.05); transform: scale(1.02); }
+		.drop-zone .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+		.drop-zone .text { font-size: 18px; font-weight: 500; margin-bottom: 8px; color: var(--text); }
+		.drop-zone .subtext { font-size: 14px; color: var(--muted); }
+		.drop-zone input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+		.controls { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 16px; margin: 24px 0; align-items: end; }
+		label { font-size: 14px; color: var(--text); font-weight: 500; margin-bottom: 8px; display: block; }
+		select, input[type="number"] { width: 100%; padding: 12px 16px; border: 2px solid var(--border); outline: none; background: var(--bg); border-radius: 8px; font-size: 14px; transition: all 0.2s ease; }
+		select:focus, input[type="number"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(248, 147, 68, 0.1); }
+		button { appearance: none; border: none; background: #222; color: #fff; padding: 14px 24px; cursor: pointer; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all 0.2s ease; }
+		button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+		button:disabled { background: #999; cursor: not-allowed; }
+		.btn-secondary { background: var(--secondary); }
+		.note { font-size: 14px; color: var(--muted); }
+		.row { display:flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+		.list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+		.item { display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center; border: 2px solid var(--border); border-radius: 12px; padding: 8px; background: #fff; }
+		.thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #f2f2f2; }
+		.meta { font-size: 12px; color: var(--muted); }
+		.move { display:flex; gap:6px; }
+		.move button { padding: 6px 10px; border-radius: 6px; }
+
+		#errorBox { margin-top: 16px; padding: 16px; border: 1px solid #f1b0b7; background: #fdecef; color: #75000f; font-size: 14px; white-space: pre-wrap; display: none; border-radius: 8px; }
+		@media (max-width: 900px){ .controls { grid-template-columns: 1fr 1fr; } .item { grid-template-columns: 60px 1fr; } .move { grid-column: 1 / -1; } }
+		@media (max-width: 600px){ .controls { grid-template-columns: 1fr; } }
+	</style>
+	<script defer src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+	<div class="ad-space-left"></div>
+	<div class="ad-space-right"></div>
+	<div class="main-content">
+		<div class="container">
+		<div class="navbar">
+			<div class="nav">
+				<a href="index.html" class="brand">Infinite Tool</a>
+				<div class="spacer"></div>
+				<a href="index.html" title="Back to Home">← Back to Home</a>
+			</div>
+		</div>
+
+		<h1>📄 Merge Images to PDF</h1>
+
+		<div id="dropZone" class="drop-zone">
+			<div class="icon">🖼️</div>
+			<div class="text">Drop images here or click to browse</div>
+			<div class="subtext">Supports PNG, JPG, GIF, and SVG</div>
+			<input id="fileInput" type="file" accept="image/*,image/svg+xml" multiple>
+		</div>
+
+		<div class="controls">
+			<div>
+				<label for="paperSize">Paper size</label>
+				<select id="paperSize">
+					<option value="A4">A4 (210×297 mm)</option>
+					<option value="Letter">Letter (8.5×11 in)</option>
+					<option value="Legal">Legal (8.5×14 in)</option>
+					<option value="A3">A3 (297×420 mm)</option>
+				</select>
+			</div>
+			<div>
+				<label for="orientation">Orientation</label>
+				<select id="orientation">
+					<option value="portrait">Portrait</option>
+					<option value="landscape">Landscape</option>
+				</select>
+			</div>
+			<div>
+				<label for="marginsMm">Margins (mm)</label>
+				<input id="marginsMm" type="number" min="0" value="10">
+			</div>
+			<div>
+				<label for="fitMode">Fit mode</label>
+				<select id="fitMode">
+					<option value="contain">Fit inside (contain)</option>
+					<option value="cover">Fill page (cover)</option>
+				</select>
+			</div>
+		</div>
+
+		<div class="row" style="margin-bottom:12px;">
+			<button id="buildBtn" disabled>📄 Build PDF</button>
+			<button id="downloadBtn" class="btn-secondary" disabled>💾 Download</button>
+			<span id="hint" class="note">Add images to merge.</span>
+		</div>
+
+		<div id="list" class="list"></div>
+
+		<div id="errorBox"></div>
+	</div>
+
+	<script>
+		const dropZone = document.getElementById('dropZone');
+		const fileInput = document.getElementById('fileInput');
+		const paperSizeSel = document.getElementById('paperSize');
+		const orientationSel = document.getElementById('orientation');
+		const marginsMmInput = document.getElementById('marginsMm');
+		const fitModeSel = document.getElementById('fitMode');
+		const buildBtn = document.getElementById('buildBtn');
+		const downloadBtn = document.getElementById('downloadBtn');
+		const listEl = document.getElementById('list');
+		const hintEl = document.getElementById('hint');
+		const errorBox = document.getElementById('errorBox');
+
+		let items = []; // {file, url, img}
+		let pdfUrl = null;
+
+		const PAPER_MM = {
+			A4: { w: 210, h: 297 },
+			A3: { w: 297, h: 420 },
+			Letter: { w: 215.9, h: 279.4 },
+			Legal: { w: 215.9, h: 355.6 }
+		};
+
+		function logError(message, detail){ const lines=[]; if(message) lines.push(message); if(detail) lines.push(String(detail)); errorBox.textContent = lines.join('\n'); errorBox.style.display = lines.length ? 'block' : 'none'; }
+		function mmToPt(mm){ return (mm / 25.4) * 72; }
+
+		function updateUI(){
+			buildBtn.disabled = items.length === 0;
+			downloadBtn.disabled = !pdfUrl;
+			hintEl.textContent = items.length ? `${items.length} image(s) ready.` : 'Add images to merge.';
+			renderList();
+		}
+
+		function revokePdf(){ if (pdfUrl) { URL.revokeObjectURL(pdfUrl); pdfUrl = null; } }
+
+		function renderList(){
+			listEl.innerHTML = '';
+			items.forEach((it, idx) => {
+				const div = document.createElement('div');
+				div.className = 'item';
+				div.innerHTML = `
+					<img class="thumb" src="${it.url}" alt="thumb">
+					<div>
+						<div>${it.file.name}</div>
+						<div class="meta">${it.file.type || 'image'} — ${Math.round((it.file.size||0)/1024)} KB</div>
+					</div>
+					<div class="move">
+						<button data-act="up">↑</button>
+						<button data-act="down">↓</button>
+						<button data-act="remove">✕</button>
+					</div>
+				`;
+				div.querySelector('[data-act="up"]').addEventListener('click', ()=>{ if (idx>0){ const t=items[idx-1]; items[idx-1]=items[idx]; items[idx]=t; revokePdf(); updateUI(); } });
+				div.querySelector('[data-act="down"]').addEventListener('click', ()=>{ if (idx<items.length-1){ const t=items[idx+1]; items[idx+1]=items[idx]; items[idx]=t; revokePdf(); updateUI(); } });
+				div.querySelector('[data-act="remove"]').addEventListener('click', ()=>{ items.splice(idx,1); revokePdf(); updateUI(); });
+				listEl.appendChild(div);
+			});
+		}
+
+		function addFiles(files){
+			revokePdf();
+			const arr = Array.from(files).filter(f => f.type.startsWith('image/') || f.type === 'image/svg+xml');
+			arr.forEach(f => {
+				const url = URL.createObjectURL(f);
+				items.push({ file: f, url });
+			});
+			updateUI();
+		}
+
+		dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); });
+		dropZone.addEventListener('dragleave', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); });
+		dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+		dropZone.addEventListener('click', (e)=>{ if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) fileInput.click(); });
+		fileInput.addEventListener('change', ()=>{ addFiles(fileInput.files||[]); fileInput.value=''; });
+
+		// Paste support: Ctrl/Cmd+V images/SVGs into the list
+		window.addEventListener('paste', (e) => {
+			const dt = e.clipboardData; if (!dt) return;
+			const items = Array.from(dt.items || []);
+			const files = items.map(it => it.getAsFile && it.getAsFile()).filter(f => f && (f.type.startsWith('image/') || f.type === 'image/svg+xml'));
+			if (files.length) { e.preventDefault(); addFiles(files); }
+		});
+
+		function loadImageFromItem(it){
+			return new Promise((resolve, reject)=>{
+				if (it.file.type === 'image/svg+xml'){
+					const reader = new FileReader();
+					reader.onload = e => { const img = new Image(); img.onload = ()=> resolve(img); img.onerror = ()=> reject(new Error('SVG load error')); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(String(e.target.result)); };
+					reader.onerror = ()=> reject(new Error('SVG read error'));
+					reader.readAsText(it.file);
+					return;
+				}
+				const img = new Image();
+				img.onload = ()=> resolve(img);
+				img.onerror = ()=> reject(new Error('Image load error'));
+				img.src = it.url;
+			});
+		}
+
+		function getPageSizePt(){
+			const paper = PAPER_MM[paperSizeSel.value] || PAPER_MM.A4;
+			const portrait = orientationSel.value === 'portrait';
+			const wmm = portrait ? paper.w : paper.h;
+			const hmm = portrait ? paper.h : paper.w;
+			return { w: mmToPt(wmm), h: mmToPt(hmm) };
+		}
+
+		async function buildPdf(){
+			try{
+				logError('');
+				const { PDFDocument } = window.PDFLib;
+				const pdf = await PDFDocument.create();
+				const margin = Math.max(0, Number(marginsMmInput.value||0));
+				const marginPt = mmToPt(margin);
+				const fitMode = fitModeSel.value;
+				for (const it of items){
+					const imgEl = await loadImageFromItem(it);
+					const pageSize = getPageSizePt();
+					const page = pdf.addPage([pageSize.w, pageSize.h]);
+					// Determine target rect inside margins
+					const targetW = Math.max(1, pageSize.w - 2*marginPt);
+					const targetH = Math.max(1, pageSize.h - 2*marginPt);
+					// Get intrinsic size by rasterizing to canvas to know pixel dims (works for all)
+					const c = document.createElement('canvas');
+					c.width = imgEl.naturalWidth || imgEl.width; c.height = imgEl.naturalHeight || imgEl.height;
+					const cx = c.getContext('2d'); cx.drawImage(imgEl, 0, 0);
+					const isPng = (it.file.type||'').includes('png') || (!it.file.type && it.file.name.toLowerCase().endsWith('.png'));
+					const dataUrl = c.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.92);
+					const base64 = dataUrl.split(',')[1];
+					const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+					const img = isPng ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+					const sW = img.width; const sH = img.height;
+					const scaleContain = Math.min(targetW/sW, targetH/sH);
+					const scaleCover = Math.max(targetW/sW, targetH/sH);
+					const scale = fitMode === 'cover' ? scaleCover : scaleContain;
+					const drawW = sW * scale; const drawH = sH * scale;
+					const x = (pageSize.w - drawW) / 2; const y = (pageSize.h - drawH) / 2;
+					page.drawImage(img, { x, y, width: drawW, height: drawH });
+				}
+				const bytes = await pdf.save();
+				revokePdf();
+				pdfUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+				downloadBtn.disabled = false;
+			} catch(e){
+				console.error(e);
+				logError('Failed to build PDF', e && e.message);
+				downloadBtn.disabled = true;
+			}
+		}
+
+		function downloadPdf(){ if (!pdfUrl) return; const a=document.createElement('a'); a.href=pdfUrl; a.download='merged.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+
+		buildBtn.addEventListener('click', buildPdf);
+		downloadBtn.addEventListener('click', downloadPdf);
+		[paperSizeSel, orientationSel, marginsMmInput, fitModeSel].forEach(el=> el.addEventListener('change', ()=> revokePdf() ));
+
+		updateUI();
+		</div>
+	</div>
+
+	</script>
+</body>
+</html>
+

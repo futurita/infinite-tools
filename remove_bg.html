@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Tool — Remove Image Background</title>
+    <style>
+        :root { 
+            --bg:#ffffff; 
+            --text:#222; 
+            --muted:#666; 
+            --border:#e9e9e9; 
+            --accent:#222; 
+            --hover:#f8f8f8;
+        }
+        html, body { height: 100%; }
+        body { 
+            margin: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            line-height: 1.6;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+        .ad-space-left { position: fixed; left: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-right: 1px solid var(--border); z-index: 5; }
+        .ad-space-right { position: fixed; right: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-left: 1px solid var(--border); z-index: 5; }
+        .main-content { margin-left: 160px; margin-right: 160px; }
+        @media (max-width: 1200px) {
+            .ad-space-left, .ad-space-right { display: none; }
+            .main-content { margin-left: 0; margin-right: 0; }
+        }
+        .navbar { position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); padding: 16px 0; margin-bottom: 24px; }
+        .nav { display: flex; align-items: center; gap: 16px; }
+        .nav .brand { font-weight: 600; font-size: 18px; }
+        .nav a { color: var(--text); text-decoration: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; transition: all .2s ease; }
+        .nav a:hover { background: var(--hover); border-color: var(--primary); }
+        .dropdown { position: relative; width: 320px; }
+        .dropdown input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); outline: none; border-radius: 6px; }
+        .dropdown .menu { position: absolute; left: 0; right: 0; background: var(--bg); border: 1px solid var(--border); border-top: none; max-height: 280px; overflow: auto; display: none; border-radius: 0 0 6px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .dropdown.open .menu { display: block; }
+        .dropdown .item { padding: 10px 12px; cursor: pointer; border-top: 1px solid var(--border); transition: background 0.2s ease; }
+        .dropdown .item:hover { background: var(--hover); }
+        h1 { font-size: 22px; margin: 0 0 24px; }
+        .panel { border:1px solid var(--border); border-radius:12px; padding:20px; }
+        .row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+        .col { flex:1 1 300px; }
+        .dropzone { border:2px dashed var(--border); border-radius:12px; padding:24px; text-align:center; background:#fff; }
+        .dropzone.dragover { background: var(--hover); }
+        .btn { display:inline-block; padding:10px 14px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; }
+        .actions { display:flex; gap:10px; align-items:center; margin-top:12px; }
+        .canvaswrap { position:relative; background: repeating-conic-gradient(#eee 0% 25%, transparent 0% 50%) 50% / 20px 20px; border:1px solid var(--border); border-radius:12px; padding:10px; }
+        .preview { max-width:100%; display:block; border-radius:8px; }
+        .canvaswrap canvas { max-width: 100%; height: auto; display: block; }
+        .hint { color: var(--muted); font-size: 13px; }
+        .range { width: 200px; }
+        footer { margin-top: 24px; color: var(--muted); font-size: 13px; text-align: center; padding: 8px; }
+        /* Make file input reliably clickable by overlaying it on the button */
+        .filewrap { position: relative; display: inline-block; }
+        .visually-hidden { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        label.btn { cursor: pointer; }
+    </style>
+    <!-- Pure canvas-based background removal (no external libraries) -->
+</head>
+<body>
+    <div class="ad-space-left"></div>
+    <div class="ad-space-right"></div>
+    <div class="main-content">
+        <div class="container">
+        <div class="navbar">
+            <div class="nav">
+                <a href="index.html" class="brand">Infinite Tool</a>
+                <div class="spacer"></div>
+                <a href="index.html" title="Back to Home">← Back to Home</a>
+            </div>
+        </div>
+        <h1>Remove Image Background</h1>
+        <div class="panel">
+            <div class="row">
+                <div class="col">
+                    <div id="dropzone" class="dropzone">
+                        <div>Drop an image here or</div>
+                        <div class="filewrap" style="margin-top:8px">
+                            <label class="btn" for="fileInput">Choose Image</label>
+                            <input id="fileInput" type="file" accept="image/*" class="visually-hidden">
+                        </div>
+                        <div class="hint" style="margin-top:8px">All processing happens locally in your browser</div>
+                    </div>
+                    <div class="actions">
+                        <label>Tolerance <input id="tolerance" class="range" type="range" min="1" max="100" value="25"></label>
+                        <label>Feather <input id="feather" class="range" type="range" min="0" max="60" value="0"></label>
+                        <button id="downloadPng" class="btn">Download PNG</button>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="canvaswrap">
+                        <canvas id="canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer>Uses on-device segmentation. Images never leave your device.</footer>
+        </div>
+    </div>
+    <script>
+        const input = document.getElementById('fileInput');
+        const drop = document.getElementById('dropzone');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const feather = document.getElementById('feather');
+        const tolerance = document.getElementById('tolerance');
+        const downloadPng = document.getElementById('downloadPng');
+
+        let originalImageBitmap = null;
+        let currentOutput = null;
+
+        function setCanvasSize(w, h) {
+            canvas.width = Math.max(1, Math.round(w));
+            canvas.height = Math.max(1, Math.round(h));
+        }
+
+        function drawImageToCanvas(imageBitmap) {
+            if (!imageBitmap) return;
+            setCanvasSize(imageBitmap.width, imageBitmap.height);
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+        }
+
+        function colorDistance(c1, c2) {
+            const dr = c1[0] - c2[0];
+            const dg = c1[1] - c2[1];
+            const db = c1[2] - c2[2];
+            return Math.sqrt(dr*dr + dg*dg + db*db);
+        }
+
+        function sampleCorners(data, w, h) {
+            const get = (x,y) => {
+                const i = (y*w + x) * 4;
+                return [data[i], data[i+1], data[i+2]];
+            };
+            const p = 5;
+            const samples = [
+                get(0,0), get(p,0), get(0,p),
+                get(w-1,0), get(w-1-p,0), get(w-1,p),
+                get(0,h-1), get(p,h-1), get(0,h-1-p),
+                get(w-1,h-1), get(w-1-p,h-1), get(w-1,h-1-p)
+            ];
+            const avg = samples.reduce((a,c)=>[a[0]+c[0],a[1]+c[1],a[2]+c[2]],[0,0,0]).map(v=>v/samples.length);
+            return avg;
+        }
+
+        function applyBackgroundRemoval() {
+            const w = canvas.width; const h = canvas.height;
+            const imgData = ctx.getImageData(0,0,w,h);
+            const data = imgData.data;
+            const bg = sampleCorners(data, w, h);
+            const tol = parseInt(tolerance.value, 10) * 2.55; // scale 0-255
+            const soft = parseInt(feather.value, 10);
+
+            for (let y=0; y<h; y++) {
+                for (let x=0; x<w; x++) {
+                    const i = (y*w + x) * 4;
+                    const d = colorDistance([data[i], data[i+1], data[i+2]], bg);
+                    const alpha = d <= tol ? 0 : 255;
+                    data[i+3] = alpha;
+                }
+            }
+
+            if (soft > 0) {
+                // feather edges by blurring alpha
+                const alphaArr = new Uint8ClampedArray(w*h);
+                for (let i=0;i<w*h;i++) alphaArr[i] = data[i*4+3];
+                const radius = Math.max(1, Math.round(soft/4));
+                const temp = new Uint8ClampedArray(alphaArr.length);
+                // horizontal blur
+                for (let y=0;y<h;y++) {
+                    let sum = 0; let count = 0;
+                    for (let x=0;x<w+radius;x++) {
+                        if (x < w) { sum += alphaArr[y*w + x]; count++; }
+                        if (x - radius >= 0) { temp[y*w + (x - radius)] = Math.round(sum / count); sum -= alphaArr[y*w + (x - radius)]; count--; }
+                    }
+                }
+                // vertical blur
+                for (let x=0;x<w;x++) {
+                    let sum = 0; let count = 0;
+                    for (let y=0;y<h+radius;y++) {
+                        if (y < h) { sum += temp[y*w + x]; count++; }
+                        if (y - radius >= 0) { const idx = (y - radius)*w + x; alphaArr[idx] = Math.round(sum / count); sum -= temp[idx]; count--; }
+                    }
+                }
+                for (let i=0;i<w*h;i++) data[i*4+3] = alphaArr[i];
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        async function handleFile(file) {
+            if (!file) return;
+            try {
+                const blob = file instanceof Blob ? file : new Blob([file]);
+                const bitmap = await createImageBitmap(blob);
+                originalImageBitmap = bitmap;
+                drawImageToCanvas(bitmap);
+                applyBackgroundRemoval();
+                currentOutput = await new Promise((resolve)=>canvas.toBlob(resolve, 'image/png'));
+                // allow selecting same file again to retrigger change
+                input.value = '';
+            } catch (err) {
+                console.error(err);
+                alert('Unable to process image. Try a different image.');
+                input.value = '';
+            }
+        }
+
+        input.addEventListener('change', () => handleFile(input.files[0]));
+
+        drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+        drop.addEventListener('drop', (e) => {
+            e.preventDefault(); drop.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+        });
+        // Paste support: Ctrl/Cmd+V image from clipboard
+        window.addEventListener('paste', (e) => {
+            const dt = e.clipboardData; if (!dt) return;
+            const items = Array.from(dt.items || []);
+            const file = items.map(it => it.getAsFile && it.getAsFile()).find(f => f && f.type && f.type.startsWith('image/'));
+            if (file) { e.preventDefault(); handleFile(file); }
+        });
+        // avoid double dialogs; only trigger when clicking outside file button/input
+        drop.addEventListener('click', (e) => {
+            const inFileButtonArea = e.target && (e.target.id === 'fileInput' || (e.target.closest && e.target.closest('.filewrap')));
+            if (!inFileButtonArea) input.click();
+        });
+        // prevent bubbling from input
+        input.addEventListener('click', (e) => { e.stopPropagation(); });
+        
+        
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        downloadPng.addEventListener('click', async () => {
+            if (!currentOutput) currentOutput = await new Promise((resolve)=>canvas.toBlob(resolve, 'image/png'));
+            if (currentOutput) downloadBlob(currentOutput, 'removed-background.png');
+        });
+
+        // Re-apply when controls change
+        ;['input','change'].forEach(evt => {
+            tolerance.addEventListener(evt, () => { if (originalImageBitmap) { drawImageToCanvas(originalImageBitmap); applyBackgroundRemoval(); currentOutput=null; } });
+            feather.addEventListener(evt, () => { if (originalImageBitmap) { drawImageToCanvas(originalImageBitmap); applyBackgroundRemoval(); currentOutput=null; } });
+        });
+    </script>
+</body>
+</html>
+
+

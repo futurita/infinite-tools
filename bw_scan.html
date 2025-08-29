@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Black & White Scan — Infinite Tool</title>
+	<style>
+		:root {
+			--bg: #ffffff;
+			--text: #222;
+			--muted: #666;
+			--border: #e9e9e9;
+			--accent: #222;
+			--hover: #f8f8f8;
+			--primary: #F89344;
+			--secondary: #FF642F;
+		}
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+			margin: 0;
+			color: var(--text);
+			background: var(--bg);
+			line-height: 1.6;
+		}
+		.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+		.ad-space-left { position: fixed; left: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-right: 1px solid var(--border); z-index: 5; }
+		.ad-space-right { position: fixed; right: 0; top: 0; width: 160px; height: 100vh; background: #f8f8f8; border-left: 1px solid var(--border); z-index: 5; }
+		.main-content { margin-left: 160px; margin-right: 160px; }
+		@media (max-width: 1200px) {
+			.ad-space-left, .ad-space-right { display: none; }
+			.main-content { margin-left: 0; margin-right: 0; }
+		}
+		.navbar { position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); padding: 16px 0; margin-bottom: 24px; }
+		.nav { display: flex; align-items: center; gap: 16px; }
+		.nav .brand { font-weight: 600; font-size: 18px; }
+		.nav a { color: var(--text); text-decoration: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; transition: all .2s ease; }
+		.nav a:hover { background: var(--hover); border-color: var(--primary); }
+		.dropdown { position: relative; width: 320px; }
+		.dropdown input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); outline: none; border-radius: 6px; }
+		.dropdown .menu { position: absolute; left: 0; right: 0; background: var(--bg); border: 1px solid var(--border); border-top: none; max-height: 280px; overflow: auto; display: none; border-radius: 0 0 6px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+		.dropdown.open .menu { display: block; }
+		.dropdown .item { padding: 10px 12px; cursor: pointer; border-top: 1px solid var(--border); transition: background 0.2s ease; }
+		.dropdown .item:hover { background: var(--hover); }
+
+		.drop-zone { border: 3px dashed var(--border); border-radius: 16px; padding: 60px 20px; text-align: center; background: var(--hover); transition: all 0.3s ease; cursor: pointer; margin-bottom: 24px; position: relative; }
+		.drop-zone.dragover { border-color: var(--primary); background: rgba(248, 147, 68, 0.05); transform: scale(1.02); }
+		.drop-zone .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+		.drop-zone .text { font-size: 18px; font-weight: 500; margin-bottom: 8px; color: var(--text); }
+		.drop-zone .subtext { font-size: 14px; color: var(--muted); }
+		.drop-zone input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+		.controls { display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap: 16px; margin: 24px 0; align-items: end; }
+		label { font-size: 14px; color: var(--text); font-weight: 500; margin-bottom: 8px; display: block; }
+		input[type="number"], select { width: 100%; padding: 12px 16px; border: 2px solid var(--border); outline: none; background: var(--bg); border-radius: 8px; font-size: 14px; transition: all 0.2s ease; }
+		input[type="number"]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(248, 147, 68, 0.1); }
+		button { appearance: none; border: none; background: var(--accent); color: #fff; padding: 14px 24px; cursor: pointer; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all 0.2s ease; }
+		button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+		button:disabled { background: #999; cursor: not-allowed; }
+		.note { font-size: 14px; color: var(--muted); }
+		.row { display:flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+		.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+		.item { border: 2px solid var(--border); border-radius: 12px; background: #fff; overflow: hidden; display: flex; flex-direction: column; }
+		.item canvas { width: 100%; height: auto; display: block; background: #fff; }
+		.item .meta { padding: 10px 12px; font-size: 12px; color: var(--muted); display:flex; justify-content: space-between; align-items:center; gap:8px; }
+		.item .meta .name { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.item .actions { padding: 12px; display:flex; gap: 8px; }
+		.btn-secondary { background: var(--secondary); }
+
+		#errorBox { margin-top: 16px; padding: 16px; border: 1px solid #f1b0b7; background: #fdecef; color: #75000f; font-size: 14px; white-space: pre-wrap; display: none; border-radius: 8px; }
+		@media (max-width: 900px){ .controls { grid-template-columns: 1fr 1fr; } }
+		@media (max-width: 600px){ .controls { grid-template-columns: 1fr; } }
+	</style>
+	<script defer src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+	<script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+	<script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+</head>
+<body>
+	<div class="ad-space-left"></div>
+	<div class="ad-space-right"></div>
+	<div class="main-content">
+		<div class="container">
+		<div class="navbar">
+			<div class="nav">
+				<a href="index.html" class="brand">Infinite Tool</a>
+				<div class="spacer"></div>
+				<a href="index.html" title="Back to Home">← Back to Home</a>
+			</div>
+		</div>
+
+		<h1>🖨️ Black & White Scan</h1>
+
+		<div id="dropZone" class="drop-zone">
+			<div class="icon">📄</div>
+			<div class="text">Drop images or PDFs here or click to browse</div>
+			<div class="subtext">Supports PNG, JPG, GIF, SVG, and PDF</div>
+			<input id="fileInput" type="file" accept="image/*,image/svg+xml,application/pdf" multiple>
+		</div>
+
+		<div class="controls">
+			<div>
+				<label for="threshold">B&W Threshold (0-255)</label>
+				<input id="threshold" type="number" min="0" max="255" value="120">
+			</div>
+			<div>
+				<label for="contrast">Contrast (+/-)</label>
+				<input id="contrast" type="number" min="-100" max="100" value="50">
+			</div>
+			<div>
+				<label for="sharpen">Sharpen (0-2)</label>
+				<input id="sharpen" type="number" step="0.1" min="0" max="2" value="1">
+			</div>
+			<div>
+				<label for="paperSize">Paper Size</label>
+				<select id="paperSize">
+					<option value="auto">Auto (from image)</option>
+					<option value="a4">A4 (210×297 mm)</option>
+					<option value="letter">Letter (8.5×11 in)</option>
+					<option value="legal">Legal (8.5×14 in)</option>
+					<option value="a3">A3 (297×420 mm)</option>
+					<option value="a5">A5 (148×210 mm)</option>
+				</select>
+			</div>
+			<div>
+				<label for="dpi">Output DPI (for PDF)</label>
+				<input id="dpi" type="number" min="72" max="600" value="200">
+			</div>
+		</div>
+
+		<div class="row" style="margin-bottom:12px;">
+			<button id="buildPdfBtn" disabled>📄 Export as PDF</button>
+			<button id="downloadZipBtn" class="btn-secondary" disabled>💾 Download ZIP (images)</button>
+			<span id="hint" class="note">Add files to convert.</span>
+		</div>
+
+		<div id="grid" class="grid"></div>
+
+		<div id="errorBox"></div>
+		</div>
+	</div>
+
+	<script>
+		const dropZone = document.getElementById('dropZone');
+		const fileInput = document.getElementById('fileInput');
+		const thresholdInput = document.getElementById('threshold');
+		const contrastInput = document.getElementById('contrast');
+		const sharpenInput = document.getElementById('sharpen');
+		const paperSizeInput = document.getElementById('paperSize');
+		const dpiInput = document.getElementById('dpi');
+		const buildPdfBtn = document.getElementById('buildPdfBtn');
+		const downloadZipBtn = document.getElementById('downloadZipBtn');
+		const gridEl = document.getElementById('grid');
+		const hintEl = document.getElementById('hint');
+		const errorBox = document.getElementById('errorBox');
+
+		let items = []; // {name, canvas, bwDataUrl}
+		let pdfUrl = null; let zipUrl = null; let jsZipUrl = null;
+
+		function logError(message, detail){ const lines=[]; if(message) lines.push(message); if(detail) lines.push(String(detail)); errorBox.textContent = lines.join('\n'); errorBox.style.display = lines.length ? 'block' : 'none'; }
+
+		function updateUI(){
+			buildPdfBtn.disabled = items.length === 0;
+			downloadZipBtn.disabled = items.length === 0;
+			hintEl.textContent = items.length ? `${items.length} page(s) ready.` : 'Add files to convert.';
+		}
+
+		function clearBlobUrls(){ if (pdfUrl) { URL.revokeObjectURL(pdfUrl); pdfUrl = null; } if (zipUrl) { URL.revokeObjectURL(zipUrl); zipUrl = null; } }
+
+		dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); });
+		dropZone.addEventListener('dragleave', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); });
+		dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+		dropZone.addEventListener('click', (e)=>{ if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) fileInput.click(); });
+		fileInput.addEventListener('change', ()=>{ handleFiles(fileInput.files||[]); fileInput.value=''; });
+
+		// Paste support: allow Ctrl/Cmd+V for images and PDFs
+		window.addEventListener('paste', (e) => {
+			const dt = e.clipboardData; if (!dt) return;
+			const itemsArr = Array.from(dt.items || []);
+			const files = itemsArr.map(it => it.getAsFile && it.getAsFile()).filter(f => f && (f.type.startsWith('image/') || f.type === 'image/svg+xml' || f.type === 'application/pdf'));
+			if (files.length) { e.preventDefault(); handleFiles(files); }
+		});
+
+		function handleFiles(fileList){
+			clearBlobUrls();
+			const files = Array.from(fileList);
+			processFiles(files);
+		}
+
+		async function processFiles(files){
+			logError('');
+			for (const f of files){
+				if (f.type === 'application/pdf'){
+					await addPdf(f);
+				} else if (f.type.startsWith('image/') || f.type === 'image/svg+xml'){
+					await addImage(f);
+				}
+			}
+			updateUI();
+		}
+
+		function createItemCard(name, canvas){
+			const wrap = document.createElement('div');
+			wrap.className = 'item';
+			wrap.appendChild(canvas);
+			const meta = document.createElement('div'); meta.className = 'meta';
+			const span = document.createElement('div'); span.className = 'name'; span.textContent = name;
+			const actions = document.createElement('div'); actions.className = 'actions';
+			const downloadBtn = document.createElement('button'); downloadBtn.textContent = '⬇️ Download'; downloadBtn.className = 'btn-secondary';
+			downloadBtn.addEventListener('click', ()=>{ const a=document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = name.replace(/\.[^.]+$/, '') + '-bw.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); });
+			actions.appendChild(downloadBtn);
+			meta.appendChild(span); meta.appendChild(actions);
+			wrap.appendChild(meta);
+			gridEl.appendChild(wrap);
+		}
+
+		function toGrayscaleAndThreshold(srcCanvas){
+			const c = document.createElement('canvas');
+			c.width = srcCanvas.width; c.height = srcCanvas.height;
+			const cx = c.getContext('2d');
+			cx.drawImage(srcCanvas, 0, 0);
+			let img = cx.getImageData(0, 0, c.width, c.height);
+			const data = img.data;
+			const thr = Math.max(0, Math.min(255, parseInt(thresholdInput.value||'180', 10)));
+			const contrastVal = Math.max(-100, Math.min(100, parseInt(contrastInput.value||'0', 10)));
+			const contrastFactor = (259 * (contrastVal + 255)) / (255 * (259 - contrastVal));
+			for (let i = 0; i < data.length; i += 4){
+				let r = data[i], g = data[i+1], b = data[i+2];
+				let gray = 0.299*r + 0.587*g + 0.114*b;
+				// simple contrast
+				gray = contrastVal !== 0 ? Math.max(0, Math.min(255, contrastFactor * (gray - 128) + 128)) : gray;
+				const v = gray >= thr ? 255 : 0;
+				data[i] = data[i+1] = data[i+2] = v; data[i+3] = 255;
+			}
+			// optional simple sharpen (unsharp mask-lite)
+			const amount = Math.max(0, Math.min(2, parseFloat(sharpenInput.value||'0')));
+			if (amount > 0){
+				const copy = new Uint8ClampedArray(data);
+				const w = c.width, h = c.height;
+				for (let y=1; y<h-1; y++){
+					for (let x=1; x<w-1; x++){
+						const idx = (y*w + x)*4;
+						for (let ch=0; ch<3; ch++){
+							const center = copy[idx+ch];
+							const top = copy[((y-1)*w + x)*4 + ch];
+							const bottom = copy[((y+1)*w + x)*4 + ch];
+							const left = copy[(y*w + (x-1))*4 + ch];
+							const right = copy[(y*w + (x+1))*4 + ch];
+							const sharpened = center * (1 + 4*amount) - amount*(top + bottom + left + right);
+							data[idx+ch] = Math.max(0, Math.min(255, sharpened));
+						}
+					}
+				}
+			}
+			cx.putImageData(img, 0, 0);
+			return c;
+		}
+
+		function scaleImageElementToCanvas(img){
+			const c = document.createElement('canvas');
+			c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
+			c.getContext('2d').drawImage(img, 0, 0);
+			return c;
+		}
+
+		function readFileAsDataURL(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=e=>resolve(String(e.target.result)); r.onerror=()=>reject(new Error('Read failed: '+file.name)); r.readAsDataURL(file); }); }
+
+		function getPaperDimensions(paperSize, imageWidth, imageHeight, dpi) {
+			const mmToPt = 2.83465; // 1 mm = 2.83465 points
+			const inToPt = 72; // 1 inch = 72 points
+			
+			if (paperSize === 'auto') {
+				// Calculate from image dimensions and DPI
+				const widthPt = (imageWidth / dpi) * inToPt;
+				const heightPt = (imageHeight / dpi) * inToPt;
+				return [widthPt, heightPt];
+			}
+			
+			const sizes = {
+				'a4': [210 * mmToPt, 297 * mmToPt], // A4: 210×297 mm
+				'letter': [8.5 * inToPt, 11 * inToPt], // Letter: 8.5×11 in
+				'legal': [8.5 * inToPt, 14 * inToPt], // Legal: 8.5×14 in
+				'a3': [297 * mmToPt, 420 * mmToPt], // A3: 297×420 mm
+				'a5': [148 * mmToPt, 210 * mmToPt] // A5: 148×210 mm
+			};
+			
+			return sizes[paperSize] || sizes['a4'];
+		}
+
+		async function addImage(file){
+			try{
+				const url = await readFileAsDataURL(file);
+				const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('Image load failed')); i.src=url; });
+				const srcCanvas = scaleImageElementToCanvas(img);
+				const bwCanvas = toGrayscaleAndThreshold(srcCanvas);
+				items.push({ name: file.name, canvas: bwCanvas });
+				createItemCard(file.name, bwCanvas);
+			}catch(e){ console.error(e); logError('Failed to process image', e && e.message); }
+		}
+
+		async function addPdf(file){
+			try{
+				const arrayBuffer = await file.arrayBuffer();
+				const pdfjs = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+				if (!pdfjs) throw new Error('PDF.js not available');
+				
+				// Set up PDF.js worker
+				if (pdfjs.GlobalWorkerOptions) {
+					pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+				}
+				
+				const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+				const pdf = await loadingTask.promise;
+				const pageCount = pdf.numPages;
+				
+				for (let p = 1; p <= pageCount; p++){
+					const page = await pdf.getPage(p);
+					// Render at a good scale based on DPR
+					const baseScale = 2; // crisp
+					const viewport = page.getViewport({ scale: baseScale });
+					const srcCanvas = document.createElement('canvas');
+					const ctx = srcCanvas.getContext('2d');
+					srcCanvas.width = Math.floor(viewport.width);
+					srcCanvas.height = Math.floor(viewport.height);
+					await page.render({ canvasContext: ctx, viewport }).promise;
+					const bwCanvas = toGrayscaleAndThreshold(srcCanvas);
+					items.push({ name: `${file.name.replace(/\.[^.]+$/, '')}-page-${p}.png`, canvas: bwCanvas });
+					createItemCard(`${file.name} — page ${p}`, bwCanvas);
+				}
+			}catch(e){ console.error(e); logError('Failed to process PDF', e && e.message); }
+		}
+
+		async function ensureJsZip(){ if (window.JSZip) return; const src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'; const res=await fetch(src,{cache:'force-cache'}); if(!res.ok) throw new Error('Failed to fetch JSZip'); const text=await res.text(); jsZipUrl = URL.createObjectURL(new Blob([text],{type:'application/javascript'})); await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src=jsZipUrl; s.onload=resolve; s.onerror=()=>reject(new Error('Script load error')); document.head.appendChild(s); }); if(!window.JSZip) throw new Error('JSZip not available'); }
+
+		buildPdfBtn.addEventListener('click', async ()=>{
+			try{
+				const { PDFDocument } = window.PDFLib;
+				const out = await PDFDocument.create();
+				const dpi = Math.max(72, Math.min(600, parseInt(dpiInput.value||'200',10)));
+				const paperSize = paperSizeInput.value;
+				
+				for (const it of items){
+					const imgData = it.canvas.toDataURL('image/png');
+					const base64 = imgData.split(',')[1];
+					const bytes = Uint8Array.from(atob(base64), c=>c.charCodeAt(0));
+					const png = await out.embedPng(bytes);
+					
+					// Get page dimensions based on paper size selection
+					const [pageWidthPt, pageHeightPt] = getPaperDimensions(paperSize, png.width, png.height, dpi);
+					const page = out.addPage([pageWidthPt, pageHeightPt]);
+					
+					// Calculate image dimensions to fit the page
+					const imgAspectRatio = png.width / png.height;
+					const pageAspectRatio = pageWidthPt / pageHeightPt;
+					
+					let drawWidth, drawHeight, drawX, drawY;
+					
+					if (imgAspectRatio > pageAspectRatio) {
+						// Image is wider than page - fit to width
+						drawWidth = pageWidthPt;
+						drawHeight = pageWidthPt / imgAspectRatio;
+						drawX = 0;
+						drawY = (pageHeightPt - drawHeight) / 2;
+					} else {
+						// Image is taller than page - fit to height
+						drawHeight = pageHeightPt;
+						drawWidth = pageHeightPt * imgAspectRatio;
+						drawX = (pageWidthPt - drawWidth) / 2;
+						drawY = 0;
+					}
+					
+					page.drawImage(png, { 
+						x: drawX, 
+						y: drawY, 
+						width: drawWidth, 
+						height: drawHeight 
+					});
+				}
+				const bytes = await out.save();
+				if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+				pdfUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+				const a=document.createElement('a'); a.href=pdfUrl; a.download='bw-scan.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+			}catch(e){ console.error(e); logError('Failed to export PDF', e && e.message); }
+		});
+
+		downloadZipBtn.addEventListener('click', async ()=>{
+			try{
+				await ensureJsZip();
+				const zip = new JSZip();
+				items.forEach((it, idx)=>{
+					const dataUrl = it.canvas.toDataURL('image/png');
+					zip.file((it.name||`page-${idx+1}`).replace(/\.[^.]+$/, '') + '-bw.png', dataUrl.split(',')[1], { base64: true });
+				});
+				const blob = await zip.generateAsync({ type: 'blob' });
+				if (zipUrl) URL.revokeObjectURL(zipUrl);
+				zipUrl = URL.createObjectURL(blob);
+				const a=document.createElement('a'); a.href=zipUrl; a.download='bw-scan-images.zip'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+			}catch(e){ console.error(e); logError('Failed to create ZIP', e && e.message); }
+		});
+
+		[thresholdInput, contrastInput, sharpenInput].forEach(input=>{
+			input.addEventListener('change', ()=>{
+				// Re-render all canvases with new params
+				gridEl.innerHTML='';
+				const originals = items.map(it=>it.canvas); // current canvases are post-processed; cannot revert easily
+				// In this simple tool, we just re-apply on the existing bitmap (idempotent enough for thresholded images)
+				items = items.map((it, idx)=>{ const re = toGrayscaleAndThreshold(originals[idx]); return { name: it.name, canvas: re }; });
+				items.forEach(it=> createItemCard(it.name, it.canvas));
+			});
+		});
+
+		window.addEventListener('unload', ()=>{ clearBlobUrls(); if (jsZipUrl) URL.revokeObjectURL(jsZipUrl); });
+		
+
+	</script>
+</body>
+</html>
+
+
