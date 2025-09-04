@@ -164,7 +164,6 @@
 			height: 100%;
 			opacity: 0;
 			cursor: pointer;
-			pointer-events: none;
 		}
 		
 		/* Controls */
@@ -597,12 +596,12 @@
 			dropZone.addEventListener('dragover', (e) => {
 				e.preventDefault();
 				dropZone.classList.add('dragover');
-			});
+			}, { passive: false });
 			
 			dropZone.addEventListener('dragleave', (e) => {
 				e.preventDefault();
 				dropZone.classList.remove('dragover');
-			});
+			}, { passive: false });
 			
 			dropZone.addEventListener('drop', (e) => {
 				e.preventDefault();
@@ -611,7 +610,7 @@
 				if (files.length > 0) {
 					loadImage(files[0]);
 				}
-			});
+			}, { passive: false });
 			
 			dropZone.addEventListener('click', (e) => {
 				if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) {
