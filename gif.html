@@ -407,19 +407,19 @@
 		dropZone.addEventListener('dragover', (e) => {
 			e.preventDefault();
 			dropZone.classList.add('dragover');
-		});
+		}, { passive: false });
 		
 		dropZone.addEventListener('dragleave', (e) => {
 			e.preventDefault();
 			dropZone.classList.remove('dragover');
-		});
+		}, { passive: false });
 		
 		dropZone.addEventListener('drop', (e) => {
 			e.preventDefault();
 			dropZone.classList.remove('dragover');
 			const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
 			handleFiles(files);
-		});
+		}, { passive: false });
 		
 		dropZone.addEventListener('click', (e) => {
 			// Only trigger file input if clicking on the drop zone itself, not on the input

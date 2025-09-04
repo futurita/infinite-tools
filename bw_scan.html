@@ -166,9 +166,9 @@
 
 		function clearBlobUrls(){ if (pdfUrl) { URL.revokeObjectURL(pdfUrl); pdfUrl = null; } if (zipUrl) { URL.revokeObjectURL(zipUrl); zipUrl = null; } }
 
-		dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); });
-		dropZone.addEventListener('dragleave', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); });
-		dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+		dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); }, { passive: false });
+		dropZone.addEventListener('dragleave', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); }, { passive: false });
+		dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files) handleFiles(e.dataTransfer.files); }, { passive: false });
 		dropZone.addEventListener('click', (e)=>{ if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) fileInput.click(); });
 		fileInput.addEventListener('change', ()=>{ handleFiles(fileInput.files||[]); fileInput.value=''; });
 
@@ -178,7 +178,7 @@
 			const itemsArr = Array.from(dt.items || []);
 			const files = itemsArr.map(it => it.getAsFile && it.getAsFile()).filter(f => f && (f.type.startsWith('image/') || f.type === 'image/svg+xml' || f.type === 'application/pdf'));
 			if (files.length) { e.preventDefault(); handleFiles(files); }
-		});
+		}, { passive: false });
 
 		function handleFiles(fileList){
 			clearBlobUrls();
