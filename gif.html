@@ -419,7 +419,7 @@
 		dropZone.addEventListener('drop', (e) => {
 			e.preventDefault();
 			dropZone.classList.remove('dragover');
-			const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+			const files = Array.from(e.dataTransfer.files).filter(f => f && f.type && (f.type.startsWith('image/') || f.type === 'image/svg+xml'));
 			handleFiles(files);
 		}, { passive: false });
 		
@@ -443,12 +443,12 @@
 		}
 
 		fileInput.addEventListener('change', () => { 
-			handleFiles(Array.from(fileInput.files || []).filter(f => f.type.startsWith('image/')));
+			handleFiles(Array.from(fileInput.files || []).filter(f => f && f.type && (f.type.startsWith('image/') || f.type === 'image/svg+xml')));
 		});
 		// Paste support: Ctrl/Cmd+V images into the page
 		window.addEventListener('paste', (e) => {
 			const items = e.clipboardData && e.clipboardData.items ? Array.from(e.clipboardData.items) : [];
-			const files = items.map(it => it.getAsFile && it.getAsFile()).filter(f => f && f.type && f.type.startsWith('image/'));
+			const files = items.map(it => it.getAsFile && it.getAsFile()).filter(f => f && f.type && (f.type.startsWith('image/') || f.type === 'image/svg+xml'));
 			if (files.length) { e.preventDefault(); handleFiles(files); }
 		});
 		function updateHint() { 
