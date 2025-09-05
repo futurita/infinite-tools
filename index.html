@@ -67,6 +67,9 @@
 			border-color: var(--primary);
 		}
 		.nav .spacer { flex: 1; }
+		/* Bigger infinity logo without border */
+		.nav .logo { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border:none; border-radius:10px; font-weight:700; font-size:24px; line-height:1; color: var(--text); text-decoration:none; background:transparent; }
+		.nav .logo:hover{ background: var(--hover); }
 		
 		/* Home page specific styles */
 		.search { flex: 1 1 320px; max-width: 420px; }
@@ -117,7 +120,7 @@
 			left: 0;
 			right: 0;
 			height: 4px;
-			background: linear-gradient(90deg, #F89344, #FF642F);
+			background: linear-gradient(90deg, #0D6EFD, #74C0FC);
 			transform: scaleX(0);
 			transition: transform 0.3s ease;
 		}
@@ -145,12 +148,13 @@
 			width: 48px;
 			height: 48px;
 			margin-bottom: 16px;
-			background: linear-gradient(135deg, #F89344, #FF642F);
+			background: rgba(10,102,255,.08);
+			border: none;
 			border-radius: 12px;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			color: white;
+			color: #0A66FF;
 			font-size: 20px;
 			font-weight: bold;
 		}
@@ -178,7 +182,7 @@
 		<!-- Standardized Navbar -->
 		<div class="navbar">
 			<div class="nav">
-				<a href="index.html" class="brand">Infinite Tool</a>
+				<a href="index.html" class="logo" aria-label="Home">∞</a>
 				<div class="spacer"></div>
 				<div class="search">
 					<input id="searchBox" type="text" placeholder="Search tools… (gif, pdf, compress, convert, edit)">

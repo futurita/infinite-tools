@@ -65,6 +65,8 @@
 			background: var(--hover);
 			border-color: var(--primary);
 		}
+		.nav .logo { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border:none; border-radius:10px; font-weight:700; font-size:24px; line-height:1; color: var(--text); text-decoration:none; background:transparent; }
+		.nav .logo:hover{ background: var(--hover); }
 		
 		/* Main Layout */
 		.editor-layout {
@@ -144,7 +146,16 @@
 		.drop-zone .icon {
 			font-size: 48px;
 			margin-bottom: 16px;
-			opacity: 0.6;
+			opacity: 1;
+			background: rgba(10,102,255,.08);
+			border: none;
+			border-radius: 12px;
+			width: 64px;
+			height: 64px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			color: #0A66FF;
 		}
 		.drop-zone .text {
 			font-size: 18px;
@@ -393,6 +404,9 @@
 			}
 		}
 	</style>
+	<link rel="stylesheet" href="ui.css">
+	<script src="media-picker.js"></script>
+    <script defer src="ui.js"></script>
 </head>
 <body>
 	<div class="ad-space-left"></div>
@@ -401,9 +415,8 @@
 		<div class="container">
 		<div class="navbar">
 			<div class="nav">
-				<a href="index.html" class="brand">Infinite Tool</a>
+				<a href="index.html" class="logo" aria-label="Home">∞</a>
 				<div class="spacer"></div>
-				<a href="index.html" title="Back to Home">← Back to Home</a>
 			</div>
 		</div>
 
@@ -411,7 +424,7 @@
 		
 		<div id="dropZone" class="drop-zone" style="display: block;">
 			<div class="icon">📁</div>
-			<div class="text">Drop image here or click to browse</div>
+			<div class="text">Drop images here or click to browse</div>
 			<div class="subtext">Supports PNG, JPG, GIF, SVG files</div>
 			<input id="fileInput" type="file" accept="image/*,image/svg+xml">
 		</div>
@@ -592,37 +605,34 @@
 		}
 		
 		function initEventListeners() {
-			// File handling
-			dropZone.addEventListener('dragover', (e) => {
-				e.preventDefault();
-				dropZone.classList.add('dragover');
-			}, { passive: false });
+			// File handling like remove_bg.html (native input + drag/drop + paste)
+			fileInput.addEventListener('change', () => {
+				const f = fileInput.files && fileInput.files[0];
+				if (f) { loadImage(f); fileInput.value = ''; }
+			});
 			
-			dropZone.addEventListener('dragleave', (e) => {
-				e.preventDefault();
-				dropZone.classList.remove('dragover');
-			}, { passive: false });
-			
+			dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+			dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
 			dropZone.addEventListener('drop', (e) => {
-				e.preventDefault();
-				dropZone.classList.remove('dragover');
-				const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-				if (files.length > 0) {
-					loadImage(files[0]);
-				}
-			}, { passive: false });
+				e.preventDefault(); dropZone.classList.remove('dragover');
+				const file = (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) || null;
+				if (file) { loadImage(file); fileInput.value = ''; }
+			});
 			
+			// Paste support
+			window.addEventListener('paste', (e) => {
+				const dt = e.clipboardData; if (!dt) return;
+				const items = Array.from(dt.items || []);
+				const file = items.map(it => it.getAsFile && it.getAsFile()).find(f => f && f.type && f.type.startsWith('image/'));
+				if (file) { e.preventDefault(); loadImage(file); fileInput.value = ''; }
+			});
+			
+			// Avoid double dialogs; ensure clicks outside input still open picker
 			dropZone.addEventListener('click', (e) => {
-				if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) {
-					fileInput.click();
-				}
+				const inFileArea = e.target && (e.target.id === 'fileInput' || (e.target.closest && e.target.closest('input[type="file"]')));
+				if (!inFileArea) fileInput.click();
 			});
-			
-			fileInput.addEventListener('change', (e) => {
-				if (e.target.files.length > 0) {
-					loadImage(e.target.files[0]);
-				}
-			});
+			fileInput.addEventListener('click', (e) => { e.stopPropagation(); });
 			
 			// Tool selection
 			toolButtons.forEach(btn => {
@@ -1334,8 +1344,7 @@
 			errorBox.textContent = lines.join('\n');
 			errorBox.style.display = lines.length ? 'block' : 'none';
 		}
-		</div>
-	</div>
 	</script>
+	</div>
 </body>
 </html>

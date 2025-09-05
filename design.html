@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Design System — Infinite Tool</title>
+	<link rel="stylesheet" href="ui.css">
+	<style>
+		.section{margin-bottom:32px}
+		.section h2{margin:0 0 12px;font-size:18px}
+		.preview{border:1px solid var(--border);border-radius:8px;padding:16px;background:#fff}
+		.grid-cols-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+		.kv{font-size:12px;color:var(--muted)}
+		.lock{max-width:420px;margin:64px auto;border:1px solid var(--border);border-radius:12px;padding:20px}
+		small.muted{color:var(--muted)}
+
+		/* Layout */
+		.layout{display:grid;grid-template-columns:240px 1fr;gap:24px}
+		.sidebar{position:sticky;top:16px;align-self:start;height:calc(100vh - 32px)}
+		.sidebar .card{padding:12px}
+		.toc{display:flex;flex-direction:column;gap:4px}
+		.toc a{display:block;text-decoration:none;color:var(--text);padding:6px 8px;border-radius:6px;font-size:13px}
+		.toc a.active,.toc a:hover{background:var(--hover)}
+		.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+		.controls .search input{width:240px}
+		.anchor{opacity:.5;margin-left:6px;text-decoration:none}
+		.anchor:hover{opacity:1}
+
+		/* Color swatches */
+		.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+		.swatch{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+		.swatch .chip{height:56px}
+		.swatch .meta{padding:8px 10px;font-size:12px}
+
+		/* Typography */
+		.type-scale h1{font-size:32px;margin:0 0 8px}
+		.type-scale h2{font-size:24px;margin:0 0 8px}
+		.type-scale h3{font-size:20px;margin:0 0 8px}
+		.type-scale p{margin:0 0 8px}
+
+		/* Theme: dark overrides (scoped to this page) */
+		.theme-dark{--bg:#111;--text:#e6e6e6;--muted:#9b9b9b;--border:#2a2a2a;--accent:#e6e6e6;--hover:#1a1a1a;--primary:#0D6EFD;--secondary:#74C0FC}
+		.theme-dark .preview,.theme-dark .card{background:#121212}
+
+		/* Grid overlay */
+		#gridOverlay{position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(to bottom, rgba(13,110,253,.08) 1px, transparent 1px),linear-gradient(to right, rgba(13,110,253,.08) 1px, transparent 1px);background-size:8px 8px,8px 8px;opacity:0;transition:opacity .2s ease;z-index:9999}
+		.grid-on #gridOverlay{opacity:1}
+	</style>
+</head>
+<body>
+	<div id="gridOverlay"></div>
+	<div class="container">
+		<div id="gate" class="lock card">
+			<h1 style="margin-top:0">Private: Design System</h1>
+			<p class="note">Enter passcode to continue.</p>
+			<div class="field">
+				<label for="pass">Passcode</label>
+				<input id="pass" type="password" placeholder="Enter passcode">
+				<div class="hint">Tip: set via URL hash like <code>#key=yourpass</code>. Saved locally if you choose.</div>
+			</div>
+			<div class="row">
+				<button id="unlock" class="button primary">Unlock</button>
+				<button id="remember" class="button outline">Remember on this device</button>
+			</div>
+			<p class="note" style="margin-top:12px"><small class="muted">Client-side gate; page remains unlisted.</small></p>
+		</div>
+
+		<div id="content" class="hidden">
+			<div class="navbar">
+				<div class="nav">
+					<a href="index.html" class="logo" aria-label="Home">∞</a>
+					<div class="spacer"></div>
+					<button id="themeToggle" class="button ghost" title="Toggle theme">🌙</button>
+					<button id="gridToggle" class="button ghost" title="Toggle grid">#</button>
+					<span class="badge">Design System</span>
+				</div>
+			</div>
+
+			<div class="layout">
+				<aside class="sidebar">
+					<div class="card padded">
+						<div class="field">
+							<label for="sectionSearch">Filter sections</label>
+							<input id="sectionSearch" type="text" placeholder="Type to filter">
+						</div>
+						<nav class="toc" id="toc">
+							<a href="#colors">Colors</a>
+							<a href="#typography">Typography</a>
+							<a href="#buttons">Buttons</a>
+							<a href="#inputs">Inputs & Fields</a>
+							<a href="#badges">Badges & Alerts</a>
+							<a href="#toggles">Switches & Radios</a>
+							<a href="#tabs">Tabs</a>
+							<a href="#modal">Modal & Toast</a>
+							<a href="#dropzone">Drop Zone</a>
+						</nav>
+					</div>
+				</aside>
+
+				<main>
+					<div class="section" id="colors">
+						<h2>Colors</h2>
+						<div class="swatches preview">
+							<div class="swatch"><div class="chip" style="background:var(--bg)"></div><div class="meta">bg — <code>var(--bg)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--text)"></div><div class="meta">text — <code>var(--text)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--muted)"></div><div class="meta">muted — <code>var(--muted)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--border)"></div><div class="meta">border — <code>var(--border)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--hover)"></div><div class="meta">hover — <code>var(--hover)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--primary)"></div><div class="meta">primary — <code>var(--primary)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--secondary)"></div><div class="meta">secondary — <code>var(--secondary)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--info)"></div><div class="meta">info — <code>var(--info)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--success)"></div><div class="meta">success — <code>var(--success)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--warning)"></div><div class="meta">warning — <code>var(--warning)</code></div></div>
+							<div class="swatch"><div class="chip" style="background:var(--danger)"></div><div class="meta">danger — <code>var(--danger)</code></div></div>
+						</div>
+					</div>
+
+					<div class="section" id="typography">
+						<h2>Typography</h2>
+						<div class="preview type-scale">
+							<h1>Heading 1</h1>
+							<h2>Heading 2</h2>
+							<h3>Heading 3</h3>
+							<p>Body text — The quick brown fox jumps over the lazy dog.</p>
+							<p><small class="muted">Muted small text</small></p>
+							<p><code>Inline code sample()</code></p>
+						</div>
+					</div>
+
+					<div class="section" id="buttons">
+						<h2>Buttons</h2>
+						<div class="preview stack">
+							<div class="row">
+								<button class="button sm">Small</button>
+								<button class="button">Default</button>
+								<button class="button lg">Large</button>
+							</div>
+							<div class="row">
+								<button class="button primary">Primary</button>
+								<button class="button secondary">Secondary</button>
+								<button class="button info">Info</button>
+								<button class="button success">Success</button>
+								<button class="button warning">Warning</button>
+								<button class="button danger">Danger</button>
+							</div>
+							<div class="row">
+								<button class="button outline">Outline</button>
+								<button class="button ghost">Ghost</button>
+								<button class="button loading">Loading</button>
+								<button class="button" disabled>Disabled</button>
+							</div>
+						</div>
+					</div>
+
+					<div class="section" id="inputs">
+						<h2>Inputs & Fields</h2>
+						<div class="grid-cols-2 preview">
+							<div>
+								<div class="field">
+									<label>Text</label>
+									<input type="text" placeholder="Type here">
+									<div class="hint">Helpful hint below input</div>
+								</div>
+								<div class="field">
+									<label>Password</label>
+									<input type="password" class="is-invalid" placeholder="••••••">
+									<div class="error-text">Validation error message</div>
+								</div>
+							</div>
+							<div>
+								<div class="field">
+									<label>Textarea</label>
+									<textarea rows="4" placeholder="Write something"></textarea>
+								</div>
+								<div class="field">
+									<label>Select</label>
+									<select>
+										<option>Option A</option>
+										<option>Option B</option>
+									</select>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="section" id="badges">
+						<h2>Badges & Alerts</h2>
+						<div class="row preview">
+							<span class="badge">Default</span>
+							<span class="badge primary">Primary</span>
+							<span class="badge secondary">Secondary</span>
+							<span class="badge info">Info</span>
+							<span class="badge success">Success</span>
+							<span class="badge warning">Warning</span>
+							<span class="badge error">Error</span>
+						</div>
+						<div class="grid-cols-2 preview" style="margin-top:12px">
+							<div class="alert info">Info alert message</div>
+							<div class="alert success">Success alert message</div>
+							<div class="alert warning">Warning alert message</div>
+							<div class="alert error">Error alert message</div>
+						</div>
+					</div>
+
+					<div class="section" id="toggles">
+						<h2>Switches, Checkbox, Radio</h2>
+						<div class="row preview">
+							<label class="switch"><input type="checkbox"><span class="slider"></span></label>
+							<label class="checkbox"><input type="checkbox"> <span>Checkbox</span></label>
+							<label class="radio"><input type="radio" name="r"> <span>Radio A</span></label>
+							<label class="radio"><input type="radio" name="r"> <span>Radio B</span></label>
+						</div>
+					</div>
+
+					<div class="section" id="tabs">
+						<h2>Tabs</h2>
+						<div class="preview" data-tabs>
+							<div class="tab-list row">
+								<button class="tab" data-tab-target="#t1">Tab One</button>
+								<button class="tab" data-tab-target="#t2">Tab Two</button>
+								<button class="tab" data-tab-target="#t3">Tab Three</button>
+							</div>
+							<div id="t1" class="tab-panel">Content for tab one.</div>
+							<div id="t2" class="tab-panel">Content for tab two.</div>
+							<div id="t3" class="tab-panel">Content for tab three.</div>
+						</div>
+					</div>
+
+					<div class="section" id="modal">
+						<h2>Modal & Toast</h2>
+						<div class="row preview">
+							<button class="button outline" data-modal-open="#demoModal">Open Modal</button>
+							<button class="button success" data-toast="Saved" data-toast-type="success">Show Toast</button>
+						</div>
+						<div id="demoModal" class="card hoverable padded" style="max-width:640px">
+							<div class="row" style="justify-content:space-between;align-items:center">
+								<div class="title">Example Modal (card preview)</div>
+								<button class="button outline" data-modal-open="#demoModalReal">Open as modal</button>
+							</div>
+							<p>This is a modal body. It uses UI.modal behavior when opened.</p>
+						</div>
+						<div id="demoModalReal" class="modal open">
+							<div class="dialog">
+								<div class="header">
+									<div class="title">Example Modal</div>
+									<button class="button outline" data-modal-close>Close</button>
+								</div>
+								<div class="body">
+									<p>This is a modal body. It uses UI.modal behavior.</p>
+								</div>
+								<div class="footer">
+									<button class="button" data-modal-close>Okay</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="section" id="dropzone">
+						<h2>Drop Zone</h2>
+						<div id="dz" class="drop-zone preview">
+							<div class="icon">📤</div>
+							<div class="text">Drop files here or click to upload</div>
+							<div class="subtext">Accepts any file. Integrated with MediaPicker.</div>
+						</div>
+						<div id="dzResult" class="kv"></div>
+					</div>
+				</main>
+			</div>
+		</div>
+	</div>
+
+	<script src="ui.js"></script>
+	<script src="media-picker.js"></script>
+	<script>
+	(function(){
+		const root = document.documentElement;
+		const body = document.body;
+		const gate = document.getElementById('gate');
+		const content = document.getElementById('content');
+		const passInput = document.getElementById('pass');
+		const unlockBtn = document.getElementById('unlock');
+		const rememberBtn = document.getElementById('remember');
+		const sectionSearch = document.getElementById('sectionSearch');
+		const toc = document.getElementById('toc');
+		const themeToggle = document.getElementById('themeToggle');
+		const gridToggle = document.getElementById('gridToggle');
+
+		function getHashKey(){
+			const m = (location.hash||'').match(/(?:^|[#&])key=([^&]+)/);
+			return m ? decodeURIComponent(m[1]) : null;
+		}
+		function getStoredKey(){ try { return localStorage.getItem('design:key') || null; } catch(e){ return null; } }
+		function setStoredKey(v){ try { localStorage.setItem('design:key', v||''); } catch(e){} }
+		function hasExplicitKey(){ return !!getHashKey() || !!getStoredKey(); }
+		function expectedKey(){ return getHashKey() || getStoredKey() || 'letmein'; }
+
+		function reveal(){ gate.classList.add('hidden'); content.classList.remove('hidden'); }
+		function tryUnlock(){
+			const expected = expectedKey();
+			const provided = passInput.value.trim();
+			if(!provided){ UI.toast.show('Enter passcode', { type: 'warning' }); return; }
+			if (provided === expected){ reveal(); UI.toast.show('Unlocked', { type: 'success' }); }
+			else { UI.toast.show('Wrong passcode', { type: 'error' }); }
+		}
+
+		// Auto-unlock if explicit key present (URL or saved)
+		if (hasExplicitKey()) { reveal(); }
+
+		unlockBtn.addEventListener('click', tryUnlock);
+		passInput && passInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ tryUnlock(); } });
+		rememberBtn.addEventListener('click', ()=>{ const v = passInput.value.trim(); if(v){ setStoredKey(v); UI.toast.show('Passcode saved locally', { type: 'info' }); } });
+
+		// Components wiring
+		MediaPicker.enhanceDropZone(document.getElementById('dz'), {
+			mode: MediaPicker.modes.any,
+			multiple: true,
+			onFiles(files){
+				const out = document.getElementById('dzResult');
+				out.textContent = files.map(f=> `${f.name} (${Math.round(f.size/1024)} KB)`).join(', ');
+				UI.toast.show(`${files.length} file(s) selected`, { type: 'info' });
+			}
+		});
+
+		// Heading anchors
+		function slugify(t){ return t.toLowerCase().replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-'); }
+		Array.from(document.querySelectorAll('main .section h2')).forEach(h=>{
+			if (!h.id){ const id = slugify(h.textContent||''); if(id){ h.parentElement.id = h.parentElement.id || id; } }
+			const id = h.parentElement.id;
+			if (id){ const a = document.createElement('a'); a.href = `#${id}`; a.className = 'anchor'; a.textContent = '#'; a.title = 'Copy link'; a.addEventListener('click', (e)=>{ e.preventDefault(); navigator.clipboard.writeText(location.origin + location.pathname + '#' + id); UI.toast.show('Section link copied', { type:'info' }); history.replaceState(null,'','#'+id); }); h.appendChild(a); }
+		});
+
+		// Scrollspy
+		const links = Array.from(toc.querySelectorAll('a'));
+		const sections = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+		const obs = new IntersectionObserver((entries)=>{
+			entries.forEach(entry=>{
+				if (entry.isIntersecting){
+					const id = '#' + entry.target.id;
+					links.forEach(l=> l.classList.toggle('active', l.getAttribute('href')===id));
+				}
+			});
+		},{ rootMargin: '-40% 0px -50% 0px', threshold: [0,1] });
+		sections.forEach(sec => obs.observe(sec));
+
+		// Smooth scroll for TOC
+		toc.addEventListener('click', (e)=>{
+			const a = e.target.closest('a');
+			if (!a) return;
+			e.preventDefault();
+			document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior:'smooth', block:'start' });
+			history.replaceState(null,'',a.getAttribute('href'));
+		});
+
+		// Filter sections
+		sectionSearch.addEventListener('input', ()=>{
+			const q = sectionSearch.value.trim().toLowerCase();
+			Array.from(document.querySelectorAll('main .section')).forEach(sec=>{
+				const hay = (sec.querySelector('h2')?.textContent||'') + ' ' + (sec.textContent||'');
+				const show = !q || hay.toLowerCase().includes(q);
+				sec.style.display = show ? '' : 'none';
+			});
+		});
+
+		// Theme toggle (persisted)
+		function applyTheme(t){
+			const dark = t === 'dark';
+			root.classList.toggle('theme-dark', dark);
+			themeToggle.textContent = dark ? '☀️' : '🌙';
+			try { localStorage.setItem('design:theme', dark ? 'dark' : 'light'); } catch(e){}
+		}
+		const savedTheme = (function(){ try { return localStorage.getItem('design:theme'); } catch(e){ return null; } })();
+		applyTheme(savedTheme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+		themeToggle.addEventListener('click', ()=>{ applyTheme(root.classList.contains('theme-dark') ? 'light' : 'dark'); });
+
+		// Grid overlay toggle
+		gridToggle.addEventListener('click', ()=>{ body.classList.toggle('grid-on'); UI.toast.show(body.classList.contains('grid-on') ? 'Grid ON' : 'Grid OFF'); });
+	})();
+	</script>
+</body>
+</html>

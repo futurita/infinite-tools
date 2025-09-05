@@ -34,6 +34,8 @@
         .nav .brand { font-weight: 600; font-size: 18px; }
         .nav a { color: var(--text); text-decoration: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; transition: all .2s ease; }
         .nav a:hover { background: var(--hover); border-color: var(--primary); }
+        .nav .logo { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border:none; border-radius:10px; font-weight:700; font-size:24px; line-height:1; color: var(--text); text-decoration:none; background:transparent; }
+        .nav .logo:hover{ background: var(--hover); }
         .dropdown { position: relative; width: 320px; }
         .dropdown input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); outline: none; border-radius: 6px; }
         .dropdown .menu { position: absolute; left: 0; right: 0; background: var(--bg); border: 1px solid var(--border); border-top: none; max-height: 280px; overflow: auto; display: none; border-radius: 0 0 6px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -60,6 +62,7 @@
         label.btn { cursor: pointer; }
     </style>
     <!-- Pure canvas-based background removal (no external libraries) -->
+    <script defer src="ui.js"></script>
 </head>
 <body>
     <div class="ad-space-left"></div>
@@ -68,9 +71,8 @@
         <div class="container">
         <div class="navbar">
             <div class="nav">
-                <a href="index.html" class="brand">Infinite Tool</a>
+                <a href="index.html" class="logo" aria-label="Home">∞</a>
                 <div class="spacer"></div>
-                <a href="index.html" title="Back to Home">← Back to Home</a>
             </div>
         </div>
         <h1>Remove Image Background</h1>
