@@ -4,7 +4,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Image Compressor</title>
-	<style>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self' 'nonce-YWJjMTIz'; style-src-attr 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+	<style nonce="YWJjMTIz">
 		:root {
 			--bg: #ffffff;
 			--text: #222;
@@ -253,14 +254,12 @@
 	<script src="media-picker.js"></script>
     <script defer src="ui.js"></script>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MNRVDK6WZB"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);} 
-    gtag('js', new Date());
-    gtag('config', 'G-MNRVDK6WZB');
-    </script>
+    <script defer src="analytics.js"></script>
+    <script defer src="compress_page.js"></script>
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
 	<div class="ad-space-left"></div>
@@ -325,11 +324,11 @@
 		<div id="errorBox"></div>
 	</div>
 
-	<script>
+	<script type="application/json" id="compress-inline-disabled-0">
 
 	</script>
 
-	<script>
+	<script type="application/json" id="compress-inline-disabled">
 		const fileInput = document.getElementById('fileInput');
 		const dropZone = document.getElementById('dropZone');
 		const maxW = document.getElementById('maxW');
@@ -351,10 +350,9 @@
 		function logError(message, detail) { const lines = []; if (message) lines.push(message); if (detail) lines.push(String(detail)); errorBox.textContent = lines.join('\n'); errorBox.style.display = lines.length ? 'block' : 'none'; }
 		
 		// Native picker wiring (no external APIs)
-		fileInput.addEventListener('change', ()=>{ if(fileInput.files&&fileInput.files.length){ handleFiles(filterImages(Array.from(fileInput.files))); fileInput.value=''; } });
 		dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); });
 		dropZone.addEventListener('dragleave', ()=>{ dropZone.classList.remove('dragover'); });
-		dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); const fs=(e.dataTransfer&&e.dataTransfer.files)?Array.from(e.dataTransfer.files):[]; if(fs.length) handleFiles(filterImages(fs)); });
+		dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); const fs=(e.dataTransfer&&e.dataTransfer.files)?Array.from(e.dataTransfer.files):[]; if(fs.length) handleFiles(fs); });
 		dropZone.addEventListener('click', (e)=>{ const inFileArea = e.target && (e.target.id==='fileInput' || (e.target.closest && e.target.closest('input[type="file"]'))); if(!inFileArea) fileInput.click(); });
 		fileInput.addEventListener('click', (e)=>{ e.stopPropagation(); });
 
@@ -362,18 +360,53 @@
 			selectedFiles = files;
 			if (zipBlobUrl) { URL.revokeObjectURL(zipBlobUrl); zipBlobUrl = null; }
 			downloadZipBtn.disabled = true;
-			const images = filterImages(Array.from(files||[]));
+			const original = Array.from(files||[]);
+			const images = filterImages(original);
+			const allowedSet = new Set(images);
+			const skipped = original.filter(f => !allowedSet.has(f));
 			compressBtn.disabled = images.length === 0;
 			hintEl.textContent = images.length ? `${images.length} image(s) ready.` : 'Select images to compress.';
+			if (skipped.length) {
+				const names = skipped.map(f=>f && f.name ? f.name : 'unknown').join(', ');
+				logError(`Skipped unsupported file(s): ${names}`);
+			} else {
+				logError('');
+			}
 			renderOriginalPreviews(images);
 		}
 
-		fileInput.addEventListener('change', () => { handleFiles(filterImages(Array.from(fileInput.files || []))); fileInput.value=''; });
+		fileInput.addEventListener('change', () => { handleFiles(Array.from(fileInput.files || [])); fileInput.value=''; });
 
-		function filterImages(arr){ return (arr||[]).filter(f=>{ if(!f) return false; if (f.type && (f.type.startsWith('image/')||f.type==='image/svg+xml')) return true; const n=(f.name||'').toLowerCase(); return /\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(n); }); }
+		function filterImages(arr){ return (arr||[]).filter(f=>{ if(!f) return false; const t=(f.type||'').toLowerCase(); if (t==='image/heic' || t==='image/heif') return false; if (t && (t.startsWith('image/')||t==='image/svg+xml')) return true; const n=(f.name||'').toLowerCase(); if (/\.(heic|heif)$/i.test(n)) return false; return /\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(n); }); }
 		function formatBytes(bytes){ if(!Number.isFinite(bytes)||bytes<0) return '0 B'; const units=['B','KB','MB','GB']; let i=0; let v=bytes; while(v>=1024&&i<units.length-1){ v/=1024; i++; } return `${v.toFixed(v<10&&i>0?2:1)} ${units[i]}`; }
 		function dataUrlToBlob(dataUrl){ const parts=dataUrl.split(','); const mime=(parts[0].match(/data:(.*?);base64/)||[])[1]||'application/octet-stream'; const binary=atob(parts[1]||''); const len=binary.length; const bytes=new Uint8Array(len); for(let i=0;i<len;i++){ bytes[i]=binary.charCodeAt(i); } return new Blob([bytes], { type: mime }); }
-		function renderOriginalPreviews(images){ previewGrid.innerHTML=''; previewRows=[]; if(!images||images.length===0){ previewSection.style.display='none'; return; } previewSection.style.display='block'; images.forEach((file, idx)=>{ const row=document.createElement('div'); row.className='preview-row'; const beforeCard=document.createElement('div'); beforeCard.className='preview-card'; const beforeTitle=document.createElement('div'); beforeTitle.className='preview-title'; beforeTitle.textContent='Before'; const beforeImg=document.createElement('img'); beforeImg.className='preview-image'; const beforeMeta=document.createElement('div'); beforeMeta.className='preview-meta'; const url=URL.createObjectURL(file); createdObjectUrls.add(url); beforeImg.src=url; beforeMeta.textContent=`${file.name} • ${formatBytes(file.size)}`; beforeCard.appendChild(beforeTitle); beforeCard.appendChild(beforeImg); beforeCard.appendChild(beforeMeta); const afterCard=document.createElement('div'); afterCard.className='preview-card'; const afterTitle=document.createElement('div'); afterTitle.className='preview-title'; afterTitle.textContent='After'; const afterBox=document.createElement('div'); afterBox.className='preview-placeholder'; afterBox.textContent='🗜️'; const afterImg=document.createElement('img'); afterImg.className='preview-image'; afterImg.style.display='none'; afterImg.alt='Compressed preview'; const afterMeta=document.createElement('div'); afterMeta.className='preview-meta'; afterMeta.textContent='Pending compression…'; afterCard.appendChild(afterTitle); afterCard.appendChild(afterBox); afterCard.appendChild(afterImg); afterCard.appendChild(afterMeta); row.appendChild(beforeCard); row.appendChild(afterCard); previewGrid.appendChild(row); previewRows[idx]={ afterImgEl: afterImg, afterMetaEl: afterMeta, afterBoxEl: afterBox }; }); }
+		function renderOriginalPreviews(images){
+			previewGrid.innerHTML=''; previewRows=[];
+			if(!images||images.length===0){ previewSection.style.display='none'; return; }
+			previewSection.style.display='block';
+			images.forEach((file, idx)=>{
+				const row=document.createElement('div'); row.className='preview-row';
+				const beforeCard=document.createElement('div'); beforeCard.className='preview-card';
+				const beforeTitle=document.createElement('div'); beforeTitle.className='preview-title'; beforeTitle.textContent='Before';
+				const beforeImg=document.createElement('img'); beforeImg.className='preview-image';
+				const beforeBox=document.createElement('div'); beforeBox.className='preview-placeholder'; beforeBox.textContent='⛔'; beforeBox.style.display='none';
+				const beforeMeta=document.createElement('div'); beforeMeta.className='preview-meta';
+				const url=URL.createObjectURL(file); createdObjectUrls.add(url);
+				beforeImg.onerror=()=>{ beforeImg.style.display='none'; beforeBox.style.display='flex'; };
+				beforeImg.src=url;
+				beforeMeta.textContent=`${file.name} • ${formatBytes(file.size)}`;
+				beforeCard.appendChild(beforeTitle); beforeCard.appendChild(beforeBox); beforeCard.appendChild(beforeImg); beforeCard.appendChild(beforeMeta);
+				const afterCard=document.createElement('div'); afterCard.className='preview-card';
+				const afterTitle=document.createElement('div'); afterTitle.className='preview-title'; afterTitle.textContent='After';
+				const afterBox=document.createElement('div'); afterBox.className='preview-placeholder'; afterBox.textContent='🗜️';
+				const afterImg=document.createElement('img'); afterImg.className='preview-image'; afterImg.style.display='none'; afterImg.alt='Compressed preview';
+				const afterMeta=document.createElement('div'); afterMeta.className='preview-meta'; afterMeta.textContent='Pending compression…';
+				afterCard.appendChild(afterTitle); afterCard.appendChild(afterBox); afterCard.appendChild(afterImg); afterCard.appendChild(afterMeta);
+				row.appendChild(beforeCard); row.appendChild(afterCard);
+				previewGrid.appendChild(row);
+				previewRows[idx]={ afterImgEl: afterImg, afterMetaEl: afterMeta, afterBoxEl: afterBox };
+			});
+		}
 		// Paste support: Ctrl/Cmd+V images
 		window.addEventListener('paste', (e) => {
 			const items = e.clipboardData && e.clipboardData.items ? Array.from(e.clipboardData.items) : [];
@@ -384,9 +417,9 @@
 		function parseSvgSize(svgText) { try { const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml'); const svg = doc.documentElement; let widthAttr = svg.getAttribute('width'); let heightAttr = svg.getAttribute('height'); let width = 0, height = 0; const parseLen = (v) => { if (!v) return 0; const m = String(v).trim().match(/([\d.]+)/); return m ? Math.max(0, Math.round(parseFloat(m[1]))) : 0; }; width = parseLen(widthAttr); height = parseLen(heightAttr); if ((!width || !height) && svg.hasAttribute('viewBox')) { const vb = svg.getAttribute('viewBox').trim().split(/[\s,]+/).map(Number); if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) { width = width || Math.round(vb[2]); height = height || Math.round(vb[3]); } } if (!width || !height) { width = width || 512; height = height || 512; } svg.setAttribute('width', String(width)); svg.setAttribute('height', String(height)); return { width, height, serialized: new XMLSerializer().serializeToString(svg) }; } catch (e) { return { width: 512, height: 512, serialized: svgText }; } }
 		function loadImageFromFile(file) { return new Promise((resolve, reject) => { if (file.type === 'image/svg+xml') { const reader = new FileReader(); reader.onerror = () => reject(new Error(`Failed to read SVG: ${file.name}`)); reader.onload = e => { const { serialized } = parseSvgSize(String(e.target.result)); const blob = new Blob([serialized], { type: 'image/svg+xml' }); const url = URL.createObjectURL(blob); createdObjectUrls.add(url); const img = new Image(); img.onload = () => resolve(img); img.onerror = () => { URL.revokeObjectURL(url); createdObjectUrls.delete(url); reject(new Error(`Failed to load SVG image: ${file.name}`)); }; img.src = url; }; reader.readAsText(file); return; } const reader = new FileReader(); reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`)); reader.onload = e => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error(`Failed to load image: ${file.name}`)); img.src = e.target.result; }; reader.readAsDataURL(file); }); }
 		function scaleToFit(img, maxWidth, maxHeight) { const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1); return { w: Math.round(img.width * scale), h: Math.round(img.height * scale) }; }
-		async function ensureJsZip() { if (window.JSZip) return; const src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'; const res = await fetch(src, { cache: 'force-cache' }); if (!res.ok) throw new Error('Failed to fetch JSZip: ' + res.status); const text = await res.text(); jsZipBlobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = jsZipBlobUrl; s.onload = resolve; s.onerror = () => reject(new Error('Script load error for JSZip')); document.head.appendChild(s); }); if (!window.JSZip) throw new Error('JSZip not available after loading'); }
-		async function ensurePako(){ if (window.pako && typeof window.pako.deflate === 'function') return; const src='https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js'; const res=await fetch(src, { cache: 'force-cache' }); if(!res.ok) throw new Error('Failed to fetch pako: '+res.status); const text=await res.text(); const blobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(blobUrl); await new Promise((resolve, reject)=>{ const s=document.createElement('script'); s.src=blobUrl; s.onload=resolve; s.onerror=()=>reject(new Error('Script load error for pako')); document.head.appendChild(s); }); if (!(window.pako && typeof window.pako.deflate === 'function')) throw new Error('pako not available after loading'); }
-		async function ensureUPNG(){ if (window.UPNG) return; await ensurePako(); const src='https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.js'; const res=await fetch(src, { cache: 'force-cache' }); if(!res.ok) throw new Error('Failed to fetch UPNG: '+res.status); const text=await res.text(); const blobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(blobUrl); await new Promise((resolve, reject)=>{ const s=document.createElement('script'); s.src=blobUrl; s.onload=resolve; s.onerror=()=>reject(new Error('Script load error for UPNG')); document.head.appendChild(s); }); if (!window.UPNG) throw new Error('UPNG not available after loading'); }
+		async function ensureJsZip() { if (window.JSZip) return; await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = 'vendor/jszip.min.js'; s.onload = resolve; s.onerror = () => reject(new Error('Script load error for JSZip')); document.head.appendChild(s); }); if (!window.JSZip) throw new Error('JSZip not available after loading'); }
+		async function ensurePako(){ if (window.pako && typeof window.pako.deflate === 'function') return; await new Promise((resolve, reject)=>{ const s=document.createElement('script'); s.src='vendor/pako.min.js'; s.onload=resolve; s.onerror=()=>reject(new Error('Script load error for pako')); document.head.appendChild(s); }); if (!(window.pako && typeof window.pako.deflate === 'function')) throw new Error('pako not available after loading'); }
+		async function ensureUPNG(){ if (window.UPNG) return; await ensurePako(); await new Promise((resolve, reject)=>{ const s=document.createElement('script'); s.src='vendor/UPNG.js'; s.onload=resolve; s.onerror=()=>reject(new Error('Script load error for UPNG')); document.head.appendChild(s); }); if (!window.UPNG) throw new Error('UPNG not available after loading'); }
 
 		compressBtn.addEventListener('click', async () => { 
 			const files = (selectedFiles || []).filter(f => f && (f.type.startsWith('image/') || f.type === 'image/svg+xml'));

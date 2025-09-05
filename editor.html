@@ -4,7 +4,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Image Editor — Infinite Tool</title>
-	<style>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://www.googletagmanager.com https://unpkg.com https://cdnjs.cloudflare.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; img-src 'self' data: blob:; style-src 'self' 'nonce-YWJjMTIz'; style-src-attr 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+	<style nonce="YWJjMTIz">
 		:root {
 			--bg: #ffffff;
 			--text: #222;
@@ -408,14 +409,11 @@
 	<script src="media-picker.js"></script>
     <script defer src="ui.js"></script>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MNRVDK6WZB"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);} 
-    gtag('js', new Date());
-    gtag('config', 'G-MNRVDK6WZB');
-    </script>
+    <script defer src="analytics.js"></script>
+    <script defer src="editor_page.js"></script>
 </head>
 <body>
 	<div class="ad-space-left"></div>
@@ -540,7 +538,7 @@
 		<div id="errorBox"></div>
 	</div>
 
-	<script>
+	<script type="application/json" id="editor-inline-disabled">
 		// Canvas and context
 		const canvas = document.getElementById('canvas');
 		const ctx = canvas.getContext('2d');

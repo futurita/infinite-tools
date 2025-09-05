@@ -4,7 +4,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Any File Converter — Infinite Tool</title>
-	<style>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; img-src 'self' data: blob:; style-src 'self' 'nonce-YWJjMTIz'; font-src 'self' data:; media-src 'self' blob:; form-action 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src 'none'; manifest-src 'self'; block-all-mixed-content; upgrade-insecure-requests">
+	<style nonce="YWJjMTIz">
 		:root {
 			--bg: #ffffff;
 			--text: #222;
@@ -290,19 +291,19 @@
 			.file-item { flex-direction: column; text-align: center; }
 			.format-options { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
 		}
+
+		/* Local utility classes to replace inline styles */
+		.row-controls { gap: 16px; align-items: center; margin-bottom: 24px; }
 	</style>
 	<link rel="stylesheet" href="ui.css">
 	<script src="media-picker.js"></script>
     <script defer src="ui.js"></script>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="referrer" content="no-referrer">
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MNRVDK6WZB"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);} 
-    gtag('js', new Date());
-    gtag('config', 'G-MNRVDK6WZB');
-    </script>
+    <script defer src="analytics.js"></script>
 </head>
 <body>
 	<div class="ad-space-left"></div>
@@ -363,316 +364,22 @@
 			</div>
 		</div>
 
-		<div class="row" style="gap:16px; align-items:center; margin-bottom: 24px;">
+		<div class="row row-controls">
 			<button id="convertBtn" disabled>🔄 Convert Files</button>
 			<button id="downloadAllBtn" disabled>💾 Download All</button>
 			<span class="note" id="hint">Select files and choose output format to begin conversion.</span>
 			<span class="error" id="error"></span>
 		</div>
 
-		<div style="margin-top:16px;">
-			<progress id="progress" value="0" max="1" style="display:none;"></progress>
+		<div class="mt-16">
+			<progress id="progress" value="0" max="1" class="hidden"></progress>
 		</div>
 
 		<div id="errorBox"></div>
 		<div id="fileList" class="file-list"></div>
 	</div>
 
-	<script>
-		const fileInput = document.getElementById('fileInput');
-		const dropZone = document.getElementById('dropZone');
-		const outputFormat = document.getElementById('outputFormat');
-		const quality = document.getElementById('quality');
-		const convertBtn = document.getElementById('convertBtn');
-		const downloadAllBtn = document.getElementById('downloadAllBtn');
-		const progressEl = document.getElementById('progress');
-		const hintEl = document.getElementById('hint');
-		const errorEl = document.getElementById('error');
-		const errorBox = document.getElementById('errorBox');
-		const fileList = document.getElementById('fileList');
-
-		let selectedFiles = [];
-		let convertedFiles = [];
-		let previewUrls = [];
-
-		// File type icons
-		const fileIcons = {
-			'image': '🖼️',
-			'audio': '🎵',
-			'video': '🎬',
-			'text': '📄',
-			'application': '📋',
-			'default': '📁'
-		};
-
-		// Supported conversions
-		const supportedConversions = {
-			'image/jpeg': ['image/png', 'image/webp', 'image/gif'],
-			'image/png': ['image/jpeg', 'image/webp', 'image/gif'],
-			'image/webp': ['image/jpeg', 'image/png', 'image/gif'],
-			'image/gif': ['image/jpeg', 'image/png', 'image/webp'],
-			'image/svg+xml': ['image/png', 'image/jpeg', 'image/webp'],
-			'text/plain': ['text/html', 'application/json'],
-			'text/html': ['text/plain', 'application/json'],
-			'application/json': ['text/plain', 'text/html']
-		};
-
-		function setError(msg) { 
-			errorEl.textContent = msg || ''; 
-		}
-
-		function logError(message, detail) { 
-			const lines = []; 
-			if (message) lines.push(message); 
-			if (detail) lines.push(String(detail)); 
-			errorBox.textContent = lines.join('\n'); 
-			errorBox.style.display = lines.length ? 'block' : 'none'; 
-		}
-
-		function updateHint() {
-			if (selectedFiles.length === 0) {
-				hintEl.textContent = 'Select files and choose output format to begin conversion.';
-				return;
-			}
-			const format = outputFormat.value;
-			if (!format) {
-				hintEl.textContent = `${selectedFiles.length} file(s) selected. Choose output format.`;
-				return;
-			}
-			hintEl.textContent = `${selectedFiles.length} file(s) ready to convert to ${format.split('/')[1].toUpperCase()}.`;
-		}
-
-		function getFileIcon(file) {
-			const type = file.type.split('/')[0];
-			return fileIcons[type] || fileIcons.default;
-		}
-
-		function formatFileSize(bytes) {
-			if (bytes === 0) return '0 Bytes';
-			const k = 1024;
-			const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-			const i = Math.floor(Math.log(bytes) / Math.log(k));
-			return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-		}
-
-		function getFileExtension(mimeType) {
-			const extensions = {
-				'image/jpeg': 'jpg',
-				'image/png': 'png',
-				'image/webp': 'webp',
-				'image/gif': 'gif',
-				'image/svg+xml': 'svg',
-				'application/pdf': 'pdf',
-				'text/plain': 'txt',
-				'text/html': 'html',
-				'text/css': 'css',
-				'application/json': 'json',
-				'audio/mpeg': 'mp3',
-				'audio/wav': 'wav',
-				'audio/ogg': 'ogg',
-				'audio/aac': 'aac',
-				'video/mp4': 'mp4',
-				'video/webm': 'webm',
-				'video/ogg': 'ogv'
-			};
-			return extensions[mimeType] || 'bin';
-		}
-
-		function canConvert(fromType, toType) {
-			// Check if conversion is supported
-			if (supportedConversions[fromType]) {
-				return supportedConversions[fromType].includes(toType);
-			}
-			// Allow same type conversions (for quality changes)
-			return fromType === toType;
-		}
-
-		function renderFileList() {
-			// Revoke old previews to avoid memory leaks
-			try{ previewUrls.forEach(u=>URL.revokeObjectURL(u)); }catch(_){ }
-			previewUrls = [];
-			fileList.innerHTML = '';
-			selectedFiles.forEach((file, index) => {
-				const fileItem = document.createElement('div');
-				fileItem.className = 'file-item';
-				const canConvertTo = outputFormat.value && canConvert(file.type, outputFormat.value);
-				const status = canConvertTo ? '✅' : '❌';
-				let left;
-				if (file.type && file.type.startsWith('image/')) {
-					const url = URL.createObjectURL(file);
-					previewUrls.push(url);
-					left = `<img class="file-thumb" src="${url}" alt="preview">`;
-				} else {
-					left = `<div class="file-icon">${getFileIcon(file)}</div>`;
-				}
-				const statusBadge = outputFormat.value ? (canConvertTo ? `<span class="status-badge ok">Available</span>` : `<span class="status-badge no">Not supported</span>`) : `<span class="status-badge neutral">Choose format</span>`;
-				fileItem.innerHTML = `
-					${left}
-					<div class="file-info">
-						<div class="file-name" title="${file.name}">${file.name}</div>
-						<div class="file-size">${formatFileSize(file.size)}</div>
-						<div class="file-format">${file.type} ${statusBadge}</div>
-					</div>
-					<div class="file-actions"><button class="icon-button danger-outline" style="width:36px;height:32px;border-radius:10px" onclick="removeFile(${index})" title="Remove" aria-label="Remove">
-						<img alt="" aria-hidden="true" width="18" height="18" style="display:block" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dc3545' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 6 5 6 21 6'/%3E%3Cpath d='M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'/%3E%3Cpath d='M10 11v6'/%3E%3Cpath d='M14 11v6'/%3E%3Cpath d='M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2'/%3E%3C/svg%3E" />
-					</button></div>
-				`;
-				fileList.appendChild(fileItem);
-			});
-		}
-
-		function updateFormatOptionsState(){
-			const opts = Array.from(outputFormat.querySelectorAll('option'));
-			let current = outputFormat.value;
-			let currentStillAllowed = true;
-			opts.forEach(opt => {
-				if (!opt.value) return; // placeholder
-				if (selectedFiles.length === 0){ opt.disabled = false; opt.hidden = false; return; }
-				const allowed = selectedFiles.some(f=>canConvert(f.type, opt.value));
-				opt.disabled = !allowed;
-				opt.hidden = !allowed; // hide from list for cleaner UX
-				if (opt.value === current && !allowed){ currentStillAllowed = false; }
-			});
-			if (!currentStillAllowed){ outputFormat.value = ''; }
-		}
-
-		function removeFile(index) {
-			selectedFiles.splice(index, 1);
-			updateUI();
-		}
-
-		function updateUI() {
-			const format = outputFormat.value;
-			const canConvertAny = selectedFiles.some(file => canConvert(file.type, format));
-			updateFormatOptionsState();
-			convertBtn.disabled = selectedFiles.length === 0 || !format || !canConvertAny;
-			downloadAllBtn.disabled = convertedFiles.length === 0;
-			
-			updateHint();
-			renderFileList();
-		}
-
-		// Drag and Drop functionality (native, like remove_bg.html)
-		dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-		dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
-		dropZone.addEventListener('drop', (e) => {
-			e.preventDefault(); dropZone.classList.remove('dragover');
-			const files = (e.dataTransfer && e.dataTransfer.files) ? Array.from(e.dataTransfer.files) : [];
-			if (files.length) handleFiles(files);
-		});
-		// Avoid double dialogs; ensure clicks outside input still open picker
-		dropZone.addEventListener('click', (e) => {
-			const inFileArea = e.target && (e.target.id === 'fileInput' || (e.target.closest && e.target.closest('input[type="file"]')));
-			if (!inFileArea) fileInput.click();
-		});
-		fileInput.addEventListener('click', (e) => { e.stopPropagation(); });
-
-		// Paste support: Ctrl/Cmd+V files (images, pdfs, text) into the converter
-		window.addEventListener('paste', (e) => {
-			const dt = e.clipboardData; if (!dt) return;
-			const items = Array.from(dt.items || []);
-			const files = items.map(it => it.getAsFile && it.getAsFile()).filter(Boolean);
-			if (files.length) { e.preventDefault(); handleFiles(files); return; }
-			// Fallback: text paste -> create a text file
-			const text = dt.getData && dt.getData('text');
-			if (text) {
-				const blob = new Blob([text], { type: 'text/plain' });
-				blob.name = 'pasted.txt';
-				handleFiles([blob]);
-			}
-		}, { passive: false });
-
-		function handleFiles(files) {
-			selectedFiles = files;
-			convertedFiles = [];
-			setError('');
-			logError('');
-			updateUI();
-		}
-
-		fileInput.addEventListener('change', () => { handleFiles(Array.from(fileInput.files || [])); fileInput.value=''; });
-
-
-
-		outputFormat.addEventListener('change', updateUI);
-
-		// Convert functionality
-		convertBtn.addEventListener('click', async () => {
-			const format = outputFormat.value;
-			const qualityValue = parseFloat(quality.value);
-			
-			if (!format || selectedFiles.length === 0) return;
-			
-			convertBtn.disabled = true;
-			progressEl.style.display = 'block';
-			progressEl.value = 0;
-			
-			convertedFiles = [];
-			
-			try {
-				for (let i = 0; i < selectedFiles.length; i++) {
-					const file = selectedFiles[i];
-					
-					if (!canConvert(file.type, format)) {
-						console.log(`Skipping ${file.name} - conversion not supported`);
-						continue;
-					}
-					
-					// Simulate conversion process
-					await new Promise(resolve => setTimeout(resolve, 500));
-					
-					// Create converted file (simplified - in real implementation, actual conversion would happen)
-					const convertedFile = {
-						original: file,
-						converted: file, // In real implementation, this would be the converted file
-						format: format,
-						extension: getFileExtension(format)
-					};
-					
-					convertedFiles.push(convertedFile);
-					
-					progressEl.value = (i + 1) / selectedFiles.length;
-				}
-				
-				updateUI();
-				setError('');
-				logError('');
-				
-			} catch (error) {
-				setError('Conversion failed');
-				logError('Conversion error:', error);
-			} finally {
-				convertBtn.disabled = false;
-				progressEl.style.display = 'none';
-			}
-		});
-
-		// Download functionality
-		downloadAllBtn.addEventListener('click', () => {
-			if (convertedFiles.length === 0) return;
-			
-			convertedFiles.forEach((fileInfo, index) => {
-				const originalName = fileInfo.original.name;
-				const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.'));
-				const newName = `${nameWithoutExt}.${fileInfo.extension}`;
-				
-				// Create download link
-				const url = URL.createObjectURL(fileInfo.converted);
-				const a = document.createElement('a');
-				a.href = url;
-				a.download = newName;
-				document.body.appendChild(a);
-				a.click();
-				document.body.removeChild(a);
-				URL.revokeObjectURL(url);
-			});
-		});
-
-		// Initialize
-		updateUI();
-		</script>
-		</div>
-	</div>
+<script defer src="converter_page.js"></script>
 </body>
 </html>
 

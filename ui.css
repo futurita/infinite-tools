@@ -133,4 +133,5 @@ input[type=text]:focus,input[type=number]:focus,input[type=email]:focus,input[ty
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
 .center{display:flex;align-items:center;justify-content:center}
 .hidden{display:none!important}
+.mt-16{margin-top:16px}
 .text-center{text-align:center}

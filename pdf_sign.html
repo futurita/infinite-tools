@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infinite Tool — PDF Sign</title>
-    <style>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://unpkg.com https://cdnjs.cloudflare.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self' 'nonce-YWJjMTIz'; style-src-attr 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+    <style nonce="YWJjMTIz">
         :root { 
             --bg:#ffffff; 
             --text:#222; 
@@ -65,19 +66,17 @@
         .text-box.unconfirmed .handle { display:block !important; }
         .text-box:hover .handle, .text-box.moving .handle, .text-box:focus-within .handle, .text-box.editing .handle { display:block; }
     </style>
-    <script defer src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    <script defer src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js" integrity="sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2" crossorigin="anonymous"></script>
     <script defer src="ui.js"></script>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="ui.css">
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MNRVDK6WZB"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);} 
-    gtag('js', new Date());
-    gtag('config', 'G-MNRVDK6WZB');
-    </script>
+    <script defer src="analytics.js"></script>
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
     <div class="ad-space-left"></div>
@@ -201,9 +200,8 @@
             originalPdfBytes = arrayBuffer.slice(0);
             const pdfjs = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
             if (!pdfjs) throw new Error('PDF.js not available');
-            if (pdfjs.GlobalWorkerOptions) {
-                pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            }
+            // Disable PDF.js worker to comply with strict CSP worker-src and avoid cross-origin worker issues
+            pdfjs.disableWorker = true;
             pdfjsDoc = await pdfjs.getDocument({ data: arrayBuffer }).promise;
             // Reset state
             Object.keys(strokesByPage).forEach(k=> delete strokesByPage[k]);
@@ -598,6 +596,7 @@
             }catch(err){ console.error(err); alert('ไม่สามารถดาวน์โหลดได้: ' + (err && err.message ? err.message : String(err))); }
         });
     </script>
+    <script defer src="pdf_sign_page.js"></script>
     </body>
     </html>
 

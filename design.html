@@ -4,6 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Design System — Infinite Tool</title>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://www.googletagmanager.com https://unpkg.com https://cdnjs.cloudflare.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; img-src 'self' data: blob:; style-src 'self' 'nonce-YWJjMTIz'; style-src-attr 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
 	<link rel="stylesheet" href="ui.css">
 	<style>
 		.section{margin-bottom:32px}
@@ -46,6 +47,9 @@
 		#gridOverlay{position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(to bottom, rgba(13,110,253,.08) 1px, transparent 1px),linear-gradient(to right, rgba(13,110,253,.08) 1px, transparent 1px);background-size:8px 8px,8px 8px;opacity:0;transition:opacity .2s ease;z-index:9999}
 		.grid-on #gridOverlay{opacity:1}
 	</style>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MNRVDK6WZB"></script>
+    <script defer src="analytics.js"></script>
 </head>
 <body>
 	<div id="gridOverlay"></div>

@@ -4,7 +4,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>GIF Maker</title>
-	<style>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://cdnjs.cloudflare.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self' 'nonce-YWJjMTIz'; style-src-attr 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+	<style nonce="YWJjMTIz">
 		:root {
 			--bg: #ffffff;
 			--text: #222;
@@ -339,14 +340,12 @@
 	</style>
 	<link rel="stylesheet" href="ui.css">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MNRVDK6WZB"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);} 
-    gtag('js', new Date());
-    gtag('config', 'G-MNRVDK6WZB');
-    </script>
+    <script defer src="analytics.js"></script>
+    <script defer src="gif_page.js"></script>
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
 	<div class="ad-space-left"></div>
@@ -395,8 +394,9 @@
 		</div>
 	</div>
 
-	<script src="media-picker.js"></script>
+	<script defer src="media-picker.js"></script>
     <script defer src="ui.js"></script>
+    <!-- inline worker fallback removed to satisfy CSP -->
 
 	<script>
 		const fileInput = document.getElementById('fileInput');
@@ -429,8 +429,28 @@
 			setTimeout(() => { resultImg.src = TRANSPARENT_PX; }, 0);
 		}
 
-		async function ensureGifLibrary() { if (window.GIF) return; const libSrc = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'; const res = await fetch(libSrc, { cache: 'force-cache' }); if (!res.ok) throw new Error('Failed to fetch gif.js: ' + res.status); const text = await res.text(); gifLibBlobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(gifLibBlobUrl); await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = gifLibBlobUrl; s.onload = resolve; s.onerror = () => reject(new Error('Script load error for gif.js')); document.head.appendChild(s); }); if (!window.GIF) throw new Error('GIF class not available after loading'); }
-		async function ensureWorker() { if (workerBlobUrl) return workerBlobUrl; const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'; const res = await fetch(workerSrc, { cache: 'force-cache' }); if (!res.ok) throw new Error('Failed to fetch gif.worker.js: ' + res.status); const text = await res.text(); workerBlobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(workerBlobUrl); return workerBlobUrl; }
+		async function ensureGifLibrary() { if (window.GIF) return; await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = 'vendor/gif.js'; s.onload = resolve; s.onerror = () => reject(new Error('Script load error for gif.js')); document.head.appendChild(s); }); if (!window.GIF) throw new Error('GIF class not available after loading'); }
+		async function ensureWorker() {
+			if (workerBlobUrl) return workerBlobUrl;
+			const isFileProtocol = location.protocol === 'file:';
+			try {
+				const res = await fetch('vendor/gif.worker.js');
+				if (res.ok) {
+					const text = await res.text();
+					const blob = new Blob([text], { type: 'application/javascript' });
+					workerBlobUrl = URL.createObjectURL(blob);
+					createdObjectUrls.add(workerBlobUrl);
+					return workerBlobUrl;
+				}
+			} catch (_) { /* fall through to inline */ }
+			const inlineEl = document.getElementById('gif-worker-inline');
+			const code = inlineEl ? (inlineEl.textContent || '') : '';
+			if (!code) throw new Error('GIF worker script unavailable');
+			const blob = new Blob([code], { type: 'application/javascript' });
+			workerBlobUrl = URL.createObjectURL(blob);
+			createdObjectUrls.add(workerBlobUrl);
+			return workerBlobUrl;
+		}
 
 		// Drag and Drop functionality
 		dropZone.addEventListener('dragover', (e) => {
@@ -497,11 +517,23 @@
 				d.className = 'thumb'; 
 				d.draggable = true; 
 				d.dataset.index = String(idx); 
-				d.innerHTML = `
-					<img src="${urls[idx]}" onerror="this.removeAttribute('src');">
-					<div class="meta">${idx + 1}. ${file.name}</div>
-					<button class="remove-btn" onclick="removeFile(${idx})">×</button>
-				`; 
+
+				const img = document.createElement('img');
+				img.src = urls[idx];
+				img.addEventListener('error', () => { img.removeAttribute('src'); });
+
+				const meta = document.createElement('div');
+				meta.className = 'meta';
+				meta.textContent = (idx + 1) + '. ' + (file.name || '');
+
+				const removeBtn = document.createElement('button');
+				removeBtn.className = 'remove-btn';
+				removeBtn.textContent = '×';
+				removeBtn.addEventListener('click', () => removeFile(idx));
+
+				d.appendChild(img);
+				d.appendChild(meta);
+				d.appendChild(removeBtn);
 				attachDragHandlers(d); 
 				thumbList.appendChild(d); 
 			}); 
@@ -583,7 +615,8 @@
 				}); 
 				images.forEach((img, idx) => { 
 					const frameCanvas = drawCentered(img, maxWidth, maxHeight); 
-					gif.addFrame(frameCanvas, { delay }); 
+					const frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true }); 
+					gif.addFrame(frameCtx, { copy: true, delay }); 
 					progressEl.value = 2 + idx; 
 				}); 
 				gif.on('progress', p => { 
@@ -615,7 +648,7 @@
 		});
 		downloadBtn.addEventListener('click', () => { if (!gifBlobUrl) return; const a = document.createElement('a'); a.href = gifBlobUrl; a.download = 'loop.gif'; document.body.appendChild(a); a.click(); document.body.removeChild(a); });
 
-		window.addEventListener('unload', () => { if (gifBlobUrl) URL.revokeObjectURL(gifBlobUrl); if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl); if (gifLibBlobUrl) URL.revokeObjectURL(gifLibBlobUrl); createdObjectUrls.forEach(u => URL.revokeObjectURL(u)); createdObjectUrls.clear(); });
+		window.addEventListener('pagehide', () => { if (gifBlobUrl) URL.revokeObjectURL(gifBlobUrl); if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl); if (gifLibBlobUrl) URL.revokeObjectURL(gifLibBlobUrl); createdObjectUrls.forEach(u => URL.revokeObjectURL(u)); createdObjectUrls.clear(); });
 	</script>
 		</div>
 	</div>
