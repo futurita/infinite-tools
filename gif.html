@@ -54,7 +54,16 @@
 		.drop-zone .icon {
 			font-size: 48px;
 			margin-bottom: 16px;
-			opacity: 0.6;
+			opacity: 1;
+			background: rgba(10,102,255,.08);
+			border: none;
+			border-radius: 12px;
+			width: 64px;
+			height: 64px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			color: #0A66FF;
 		}
 		.drop-zone .text {
 			font-size: 18px;
@@ -283,6 +292,8 @@
 			background: var(--hover);
 			border-color: var(--primary);
 		}
+		.nav .logo { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border:none; border-radius:10px; font-weight:700; font-size:24px; line-height:1; color: var(--text); text-decoration:none; background:transparent; }
+		.nav .logo:hover{ background: var(--hover); }
 		.dropdown { 
 			position: relative; 
 			width: 320px; 
@@ -326,6 +337,7 @@
 			#thumbList { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 		}
 	</style>
+	<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 	<div class="ad-space-left"></div>
@@ -334,9 +346,8 @@
 		<div class="container">
 		<div class="navbar">
 			<div class="nav">
-				<a href="index.html" class="brand">Infinite Tool</a>
+				<a href="index.html" class="logo" aria-label="Home">∞</a>
 				<div class="spacer"></div>
-				<a href="index.html" title="Back to Home">← Back to Home</a>
 			</div>
 		</div>
 
@@ -346,7 +357,7 @@
 			<div class="icon">📁</div>
 			<div class="text">Drop images here or click to browse</div>
 			<div class="subtext">Supports PNG, JPG, GIF, SVG files</div>
-			<input id="fileInput" type="file" accept="image/*,image/svg+xml" multiple>
+			<input id="fileInput" type="file" accept="image/*,image/svg+xml" multiple style="display:none;">
 		</div>
 		
 		<div class="controls">
@@ -375,9 +386,8 @@
 		</div>
 	</div>
 
-	<script>
-
-	</script>
+	<script src="media-picker.js"></script>
+    <script defer src="ui.js"></script>
 
 	<script>
 		const fileInput = document.getElementById('fileInput');
@@ -400,7 +410,15 @@
 		window.addEventListener('unhandledrejection', (e) => { logError('Unhandled promise rejection', e && e.reason ? (e.reason.message || String(e.reason)) : 'Unknown reason'); });
 
 		resultImg.addEventListener('load', () => { if (resultImg.src && resultImg.src !== TRANSPARENT_PX) resultImg.classList.add('has-image'); });
-		function resetPreviewPlaceholder() { resultImg.classList.remove('has-image'); resultImg.src = TRANSPARENT_PX; }
+		function resetPreviewPlaceholder() { 
+			resultImg.classList.remove('has-image'); 
+			// Hide immediately to ensure no stale preview is visible
+			resultImg.style.visibility = 'hidden';
+			// Clear current image immediately, then set transparent placeholder to ensure repaint
+			resultImg.removeAttribute('src');
+			// Use a microtask to guarantee the src change is observed by the browser
+			setTimeout(() => { resultImg.src = TRANSPARENT_PX; }, 0);
+		}
 
 		async function ensureGifLibrary() { if (window.GIF) return; const libSrc = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'; const res = await fetch(libSrc, { cache: 'force-cache' }); if (!res.ok) throw new Error('Failed to fetch gif.js: ' + res.status); const text = await res.text(); gifLibBlobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(gifLibBlobUrl); await new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = gifLibBlobUrl; s.onload = resolve; s.onerror = () => reject(new Error('Script load error for gif.js')); document.head.appendChild(s); }); if (!window.GIF) throw new Error('GIF class not available after loading'); }
 		async function ensureWorker() { if (workerBlobUrl) return workerBlobUrl; const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'; const res = await fetch(workerSrc, { cache: 'force-cache' }); if (!res.ok) throw new Error('Failed to fetch gif.worker.js: ' + res.status); const text = await res.text(); workerBlobUrl = URL.createObjectURL(new Blob([text], { type: 'application/javascript' })); createdObjectUrls.add(workerBlobUrl); return workerBlobUrl; }
@@ -419,16 +437,14 @@
 		dropZone.addEventListener('drop', (e) => {
 			e.preventDefault();
 			dropZone.classList.remove('dragover');
-			const files = Array.from(e.dataTransfer.files).filter(f => f && f.type && (f.type.startsWith('image/') || f.type === 'image/svg+xml'));
-			handleFiles(files);
+			const files = filterImageFiles(e.dataTransfer && e.dataTransfer.files ? Array.from(e.dataTransfer.files) : []);
+			if (files.length) handleFiles(files);
 		}, { passive: false });
 		
-		dropZone.addEventListener('click', (e) => {
-			// Only trigger file input if clicking on the drop zone itself, not on the input
-			if (e.target === dropZone || e.target.closest('.icon') || e.target.closest('.text') || e.target.closest('.subtext')) {
-				fileInput.click();
-			}
-		});
+		// Native picker wiring (no external APIs)
+		fileInput.addEventListener('change', ()=>{ if(fileInput.files&&fileInput.files.length){ handleFiles(filterImageFiles(Array.from(fileInput.files))); fileInput.value=''; } });
+		dropZone.addEventListener('click', (e)=>{ const inFileArea = e.target && (e.target.id==='fileInput' || (e.target.closest && e.target.closest('input[type="file"]'))); if(!inFileArea) fileInput.click(); });
+		fileInput.addEventListener('click', (e)=>{ e.stopPropagation(); });
 
 		function handleFiles(files) {
 			selectedFiles = files;
@@ -442,13 +458,18 @@
 			renderThumbnails();
 		}
 
-		fileInput.addEventListener('change', () => { 
-			handleFiles(Array.from(fileInput.files || []).filter(f => f && f.type && (f.type.startsWith('image/') || f.type === 'image/svg+xml')));
-		});
+		function filterImageFiles(arr) {
+			return Array.from(arr || []).filter(f => {
+				if (!f) return false;
+				if (f.type && (f.type.startsWith('image/') || f.type === 'image/svg+xml')) return true;
+				const name = (f.name || '').toLowerCase();
+				return /\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(name);
+			});
+		}
 		// Paste support: Ctrl/Cmd+V images into the page
 		window.addEventListener('paste', (e) => {
 			const items = e.clipboardData && e.clipboardData.items ? Array.from(e.clipboardData.items) : [];
-			const files = items.map(it => it.getAsFile && it.getAsFile()).filter(f => f && f.type && (f.type.startsWith('image/') || f.type === 'image/svg+xml'));
+			const files = filterImageFiles(items.map(it => it.getAsFile && it.getAsFile()));
 			if (files.length) { e.preventDefault(); handleFiles(files); }
 		});
 		function updateHint() { 
@@ -565,6 +586,7 @@
 					gifBlobUrl = URL.createObjectURL(blob); 
 					resultImg.classList.add('has-image'); 
 					resultImg.src = gifBlobUrl; 
+					resultImg.style.visibility = 'visible';
 					downloadBtn.disabled = false; 
 					makeBtn.disabled = false; 
 					progressEl.style.display = 'none'; 
@@ -585,8 +607,8 @@
 		downloadBtn.addEventListener('click', () => { if (!gifBlobUrl) return; const a = document.createElement('a'); a.href = gifBlobUrl; a.download = 'loop.gif'; document.body.appendChild(a); a.click(); document.body.removeChild(a); });
 
 		window.addEventListener('unload', () => { if (gifBlobUrl) URL.revokeObjectURL(gifBlobUrl); if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl); if (gifLibBlobUrl) URL.revokeObjectURL(gifLibBlobUrl); createdObjectUrls.forEach(u => URL.revokeObjectURL(u)); createdObjectUrls.clear(); });
+	</script>
 		</div>
 	</div>
-	</script>
 </body>
 </html>

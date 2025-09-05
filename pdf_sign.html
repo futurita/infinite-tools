@@ -28,6 +28,8 @@
         .nav .brand { font-weight: 600; font-size: 18px; }
         .nav a { color: var(--text); text-decoration: none; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; transition: all .2s ease; }
         .nav a:hover { background: var(--hover); border-color: var(--primary); }
+        .nav .logo { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border:none; border-radius:10px; font-weight:700; font-size:24px; line-height:1; color: var(--text); text-decoration:none; background:transparent; }
+        .nav .logo:hover{ background: var(--hover); }
         .dropdown { position: relative; width: 320px; }
         .dropdown input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); outline: none; border-radius: 6px; }
         .dropdown .menu { position: absolute; left: 0; right: 0; background: var(--bg); border: 1px solid var(--border); border-top: none; max-height: 280px; overflow: auto; display: none; border-radius: 0 0 6px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -39,20 +41,34 @@
         .row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
         .col { flex: 1 1 320px; }
         .dropzone { border:2px dashed var(--border); border-radius:12px; padding:24px; text-align:center; background:#fff; }
+        .dropzone .icon { font-size: 40px; margin-bottom: 12px; opacity:1; background: rgba(10,102,255,.08); border: none; border-radius: 12px; width:56px; height:56px; display:inline-flex; align-items:center; justify-content:center; color:#0A66FF; }
         .btn { display:inline-block; padding:10px 14px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; }
         .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px; }
         .canvaswrap { border:1px solid var(--border); border-radius:12px; overflow:hidden; background: #f9f9f9; }
-        canvas { display:block; width:100%; height:auto; }
+        canvas { display:block; width:100%; height:auto; cursor: none; }
+        .cursor-preview { position:absolute; background: var(--blue); opacity: .25; border-radius:50%; pointer-events:none; display:none; transform: translate(-50%, -50%); }
+        .cursor-preview.pulse { animation: pulse 0.6s ease-in-out infinite alternate; }
+        @keyframes pulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.2); } }
         .hint { color: var(--muted); font-size: 13px; }
         .range { width: 200px; }
         footer { margin-top: 24px; color: var(--muted); font-size: 13px; text-align:center; padding: 8px; }
         /* Make file input reliably clickable by overlaying it on the button */
         .filewrap { position: relative; display: inline-block; }
         .visually-hidden { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        /* Text box overlay */
+        .text-box { position:absolute; min-width:120px; min-height:30px; padding:6px 8px; background:transparent; border:1px dashed var(--blue); border-radius:6px; color:#111; -webkit-text-fill-color:#111; caret-color:#111; font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+        .text-box:focus { outline:2px solid var(--blue); }
+        .text-box .handle { position:absolute; top:-8px; left:-8px; width:14px; height:14px; border-radius:4px; background:var(--blue); border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.2); cursor:grab; display:none; }
+        .text-box .remove { position:absolute; top:-8px; right:-8px; width:16px; height:16px; border-radius:8px; background:#dc3545; color:#fff; font-size:12px; line-height:12px; padding:0; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.2); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        .text-box .confirm { position:absolute; bottom:-8px; right:-8px; width:16px; height:16px; border-radius:8px; background:#28a745; color:#fff; font-size:12px; line-height:12px; padding:0; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.2); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        .text-box.moving { cursor:move; border-style:solid; }
+        .text-box.unconfirmed .handle { display:block !important; }
+        .text-box:hover .handle, .text-box.moving .handle, .text-box:focus-within .handle, .text-box.editing .handle { display:block; }
     </style>
     <script defer src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    <script defer src="ui.js"></script>
 </head>
 <body>
     <div class="ad-space-left"></div>
@@ -61,9 +77,8 @@
         <div class="container">
         <div class="navbar">
             <div class="nav">
-                <a href="index.html" class="brand">Infinite Tool</a>
+                <a href="index.html" class="logo" aria-label="Home">∞</a>
                 <div class="spacer"></div>
-                <a href="index.html" title="Back to Home">← Back to Home</a>
             </div>
         </div>
         <h1>PDF Sign</h1>
@@ -79,16 +94,36 @@
                         <div class="hint" style="margin-top:8px">Draw with a fixed blue pen. All processing is local.</div>
                     </div>
                     <div class="controls">
-                        <label>Pen size <input id="penSize" class="range" type="range" min="1" max="16" value="3"></label>
+                        <label>Pen size <input id="penSize" class="range" type="range" min="1" max="16" value="1"></label>
                         <button id="undo" class="btn">Undo</button>
                         <button id="redo" class="btn">Redo</button>
                         <button id="clear" class="btn">Clear</button>
                         <button id="download" class="btn">Download Signed PDF</button>
+                        <button id="textMode" class="btn" aria-pressed="false" title="Toggle Text Mode (T)">Text Mode</button>
+                        <label>Size <input id="textSize" type="number" min="6" max="72" value="14" style="width:64px"></label>
+                        <label>Font 
+                            <select id="textFont">
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="TimesRoman">Times</option>
+                                <option value="Courier">Courier</option>
+                            </select>
+                        </label>
+                        <label>Style 
+                            <select id="textStyle">
+                                <option value="Normal">Normal</option>
+                                <option value="Bold">Bold</option>
+                                <option value="Italic">Italic</option>
+                                <option value="BoldItalic">BoldItalic</option>
+                            </select>
+                        </label>
+                        <label>Color <input id="textColor" type="color" value="#111111"></label>
+                        <button id="addText" class="btn" title="Add Text Box at top-left">Add Text</button>
                     </div>
                 </div>
                 <div class="col" style="flex:2 1 480px;">
-                    <div class="canvaswrap">
+                    <div class="canvaswrap" style="position:relative;">
                         <canvas id="canvas"></canvas>
+                        <div id="cursor" class="cursor-preview"></div>
                     </div>
                 </div>
             </div>
@@ -102,19 +137,37 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const penSize = document.getElementById('penSize');
+        const cursorEl = document.getElementById('cursor');
         const downloadBtn = document.getElementById('download');
+        const addTextBtn = document.getElementById('addText');
+        const textModeBtn = document.getElementById('textMode');
+        const textSizeInput = document.getElementById('textSize');
+        const textColorInput = document.getElementById('textColor');
+        const textFontSelect = document.getElementById('textFont');
+        const textStyleSelect = document.getElementById('textStyle');
         const clearBtn = document.getElementById('clear');
         const undoBtn = document.getElementById('undo');
         const redoBtn = document.getElementById('redo');
 
         let pdfDoc = null;
-        let currentPageIndex = 0;
         let pdfjsDoc = null;
+        let currentPageIndex = 0;
         let pageViewport = null;
         let isDrawing = false;
-        let strokes = []; // array of arrays [{x,y}], with .size on array
-        let redoStack = []; // stack of undone strokes
         const BLUE = '#0A66FF';
+        let originalPdfBytes = null; // ArrayBuffer of the original PDF for stateless exports
+
+        // Per-page data stores
+        const strokesByPage = {}; // { [pageIndex]: [ path{size:number, points:[{x,y},...] } ] }
+        const redoByPage = {}; // { [pageIndex]: [ path ... ] }
+        const annotationsByPage = {}; // { [pageIndex]: [ { id, xCss, yCss, text, fontSize, color, font, style, locked } ] }
+        const textDefaults = { fontSize: 14, color: '#111111', font: 'Helvetica', style: 'Normal' };
+        let isTextMode = false;
+
+        function pageArray(obj, idx){ if(!obj[idx]) obj[idx] = []; return obj[idx]; }
+        function getStrokes(idx){ return pageArray(strokesByPage, idx); }
+        function getRedo(idx){ return pageArray(redoByPage, idx); }
+        function getAnnotations(idx){ return pageArray(annotationsByPage, idx); }
 
         function resizeCanvasToPage(width, height) {
             canvas.width = width;
@@ -125,28 +178,43 @@
             const page = await pdfjsDoc.getPage(pageNumber);
             pageViewport = page.getViewport({ scale: 1 });
             resizeCanvasToPage(pageViewport.width, pageViewport.height);
+            // Clear to ensure prior strokes are removed before PDF render
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             await page.render({ canvasContext: ctx, viewport: pageViewport }).promise;
-            redraw();
+            redrawStrokes();
+            syncOverlayFromModel();
         }
 
         async function loadPdf(arrayBuffer) {
             const { PDFDocument } = window.PDFLib;
             pdfDoc = await PDFDocument.load(arrayBuffer);
-            pdfjsDoc = await window['pdfjs-dist/build/pdf'].getDocument({ data: arrayBuffer }).promise;
+            // Keep a detached copy to avoid any mutation/detach issues
+            originalPdfBytes = arrayBuffer.slice(0);
+            const pdfjs = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+            if (!pdfjs) throw new Error('PDF.js not available');
+            if (pdfjs.GlobalWorkerOptions) {
+                pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+            pdfjsDoc = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+            // Reset state
+            Object.keys(strokesByPage).forEach(k=> delete strokesByPage[k]);
+            Object.keys(redoByPage).forEach(k=> delete redoByPage[k]);
+            Object.keys(annotationsByPage).forEach(k=> delete annotationsByPage[k]);
+            currentPageIndex = 0;
             await renderPageToCanvas(1);
         }
 
-        function redraw() {
-            // background already rendered; draw strokes on top
+        function redrawStrokes() {
             ctx.strokeStyle = BLUE;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
-            strokes.forEach(path => {
-                if (path.length < 2) return;
+            const paths = getStrokes(currentPageIndex);
+            paths.forEach(path => {
+                if (!path || !path.points || path.points.length < 2) return;
                 ctx.beginPath();
                 ctx.lineWidth = path.size;
-                ctx.moveTo(path[0].x, path[0].y);
-                for (let i=1;i<path.length;i++) ctx.lineTo(path[i].x, path[i].y);
+                ctx.moveTo(path.points[0].x, path.points[0].y);
+                for (let i=1;i<path.points.length;i++) ctx.lineTo(path.points[i].x, path.points[i].y);
                 ctx.stroke();
             });
         }
@@ -156,44 +224,237 @@
                 await renderPageToCanvas(currentPageIndex + 1);
             } else {
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                redraw();
+                redrawStrokes();
+                syncOverlayFromModel();
             }
         }
 
+        function getCanvasScale(){
+            const rect = canvas.getBoundingClientRect();
+            const sx = (rect.width && canvas.width) ? (canvas.width / rect.width) : 1;
+            const sy = (rect.height && canvas.height) ? (canvas.height / rect.height) : 1;
+            return { sx: (Number.isFinite(sx) && sx>0 ? sx : 1), sy: (Number.isFinite(sy) && sy>0 ? sy : 1), rect };
+        }
+
         function startDraw(x,y) {
+            if (isTextMode) { return; }
             isDrawing = true;
-            strokes.push(Object.assign([], { size: parseInt(penSize.value,10) }));
-            strokes[strokes.length-1].push({x,y});
-            // any new drawing invalidates redo history
-            redoStack = [];
+            const sizeCss = Math.max(1, parseInt(penSize.value,10));
+            const { sx } = getCanvasScale();
+            const sizeCanvas = Math.max(1, Math.round(sizeCss * sx));
+            const paths = getStrokes(currentPageIndex);
+            paths.push({ size: sizeCanvas, points: [{x,y}] });
+            // new drawing invalidates redo
+            redoByPage[currentPageIndex] = [];
+            cursorEl.classList.add('pulse');
         }
         function moveDraw(x,y) {
             if (!isDrawing) return;
-            strokes[strokes.length-1].push({x,y});
-            redraw();
+            const paths = getStrokes(currentPageIndex);
+            const last = paths[paths.length-1];
+            if (!last) return;
+            last.points.push({x,y});
+            redrawStrokes();
         }
-        function endDraw() { isDrawing = false; }
+        function endDraw() { isDrawing = false; cursorEl.classList.remove('pulse'); }
 
-        canvas.addEventListener('mousedown', e => startDraw(e.offsetX, e.offsetY));
-        canvas.addEventListener('mousemove', e => moveDraw(e.offsetX, e.offsetY));
+        function updateCursorStyle(){
+            const dCss = 16;
+            cursorEl.style.width = dCss + 'px';
+            cursorEl.style.height = dCss + 'px';
+            cursorEl.style.display = 'block';
+        }
+
+        function positionCursorFromEvent(e){
+            const rect = canvas.getBoundingClientRect();
+            const clientX = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+            const clientY = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            cursorEl.style.left = x + 'px';
+            cursorEl.style.top = y + 'px';
+        }
+
+        // Cursor follow and size sync
+        updateCursorStyle();
+        penSize.addEventListener('input', ()=> {/* cursor independent now */});
+        canvas.addEventListener('mousemove', (e)=>{ positionCursorFromEvent(e); cursorEl.style.display='block'; });
+        canvas.addEventListener('mouseleave', ()=>{ cursorEl.style.display='none'; });
+        canvas.addEventListener('mouseenter', ()=>{ updateCursorStyle(penSize.value); cursorEl.style.display='block'; });
+        canvas.addEventListener('touchstart', (e)=>{ positionCursorFromEvent(e); cursorEl.style.display='block'; }, { passive:true });
+        canvas.addEventListener('touchmove', (e)=>{ positionCursorFromEvent(e); }, { passive:true });
+        window.addEventListener('touchend', ()=>{ cursorEl.style.display='none'; });
+
+        function coordsFromEvent(e){
+            const { rect, sx, sy } = getCanvasScale();
+            const clientX = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+            const clientY = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+            const xCss = clientX - rect.left;
+            const yCss = clientY - rect.top;
+            return { x: xCss * sx, y: yCss * sy, xCss, yCss };
+        }
+
+        canvas.addEventListener('mousedown', e => { const p = coordsFromEvent(e); if (isTextMode) { insertTextAtCss(p.xCss, p.yCss); } else { startDraw(p.x, p.y); } positionCursorFromEvent(e); });
+        canvas.addEventListener('mousemove', e => { const p = coordsFromEvent(e); if (isDrawing) moveDraw(p.x, p.y); positionCursorFromEvent(e); });
         window.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('touchstart', e => { const t=e.touches[0]; const r=canvas.getBoundingClientRect(); startDraw(t.clientX-r.left, t.clientY-r.top); e.preventDefault(); });
-        canvas.addEventListener('touchmove', e => { const t=e.touches[0]; const r=canvas.getBoundingClientRect(); moveDraw(t.clientX-r.left, t.clientY-r.top); e.preventDefault(); });
+        canvas.addEventListener('touchstart', e => { const p = coordsFromEvent(e); startDraw(p.x, p.y); positionCursorFromEvent(e); e.preventDefault(); }, { passive:false });
+        canvas.addEventListener('touchmove', e => { const p = coordsFromEvent(e); if (isDrawing) moveDraw(p.x, p.y); positionCursorFromEvent(e); e.preventDefault(); }, { passive:false });
         window.addEventListener('touchend', endDraw);
 
-        clearBtn.addEventListener('click', async () => { strokes = []; redoStack = []; if (pdfjsDoc) { await renderPageToCanvas(currentPageIndex+1); } else { ctx.clearRect(0,0,canvas.width,canvas.height); } });
+        // Text annotations: model + overlay DOM
+        function syncOverlayFromModel(){
+            const wrap = document.querySelector('.canvaswrap');
+            // remove existing overlay boxes
+            Array.from(wrap.querySelectorAll('.text-box')).forEach(el=> el.remove());
+            // add current page annotations
+            getAnnotations(currentPageIndex).forEach(ann=> renderAnnotationEl(ann));
+        }
+
+        function getCleanTextFromBox(tb){
+            // Clone and strip control elements to avoid exporting their symbols (e.g., ×, ✓)
+            const clone = tb.cloneNode(true);
+            Array.from(clone.querySelectorAll('.handle, .remove, .confirm')).forEach(el => el.remove());
+            return (clone.innerText || '').replace(/\s+$/,'');
+        }
+
+        function renderAnnotationEl(ann){
+            const wrap = document.querySelector('.canvaswrap');
+            const tb = document.createElement('div');
+            tb.className = 'text-box unconfirmed';
+            tb.contentEditable = 'true';
+            tb.style.left = (ann.xCss || 20) + 'px';
+            tb.style.top = (ann.yCss || 20) + 'px';
+            tb.style.whiteSpace = 'pre-wrap';
+            tb.style.fontSize = (ann.fontSize || textDefaults.fontSize) + 'px';
+            tb.style.color = ann.color || textDefaults.color;
+            tb.innerText = ann.text || 'Type here';
+            tb.dataset.id = ann.id;
+            const handle = document.createElement('div');
+            handle.className = 'handle';
+            const remove = document.createElement('button');
+            remove.className = 'remove';
+            remove.type = 'button';
+            remove.setAttribute('aria-label','Remove text box');
+            remove.textContent = '×';
+            const confirm = document.createElement('button');
+            confirm.className = 'confirm';
+            confirm.type = 'button';
+            confirm.setAttribute('aria-label','Confirm text');
+            confirm.textContent = '✓';
+            tb.appendChild(handle);
+            tb.appendChild(remove);
+            tb.appendChild(confirm);
+            wrap.appendChild(tb);
+
+            let dragging = false; let draggingBody = false; let ox=0, oy=0; let wrapRect = null;
+            handle.addEventListener('mousedown', (e)=>{ dragging=true; handle.style.cursor='grabbing'; wrapRect = wrap.getBoundingClientRect(); ox=e.clientX - wrapRect.left - tb.offsetLeft; oy=e.clientY - wrapRect.top - tb.offsetTop; e.preventDefault(); });
+            tb.addEventListener('mousedown', (e)=>{
+                if (e.target === handle || e.target === remove) return;
+                // Body drag only when holding Alt/Option to avoid interfering with typing
+                if (!e.altKey) return;
+                draggingBody = true; tb.classList.add('moving'); wrapRect = wrap.getBoundingClientRect();
+                ox = e.clientX - wrapRect.left - tb.offsetLeft; oy = e.clientY - wrapRect.top - tb.offsetTop;
+                e.preventDefault();
+            });
+            window.addEventListener('mousemove', (e)=>{
+                if(dragging || draggingBody){
+                    const left0 = (wrapRect ? wrapRect.left : 0);
+                    const top0 = (wrapRect ? wrapRect.top : 0);
+                    let nx = (e.clientX - left0 - ox);
+                    let ny = (e.clientY - top0 - oy);
+                    // Clamp inside wrapper bounds
+                    const maxX = Math.max(0, (wrapRect ? wrapRect.width : tb.offsetLeft + nx) - tb.offsetWidth);
+                    const maxY = Math.max(0, (wrapRect ? wrapRect.height : tb.offsetTop + ny) - tb.offsetHeight);
+                    if (nx < 0) nx = 0; if (ny < 0) ny = 0;
+                    if (Number.isFinite(maxX) && nx > maxX) nx = maxX;
+                    if (Number.isFinite(maxY) && ny > maxY) ny = maxY;
+                    tb.style.left = nx + 'px'; tb.style.top = ny + 'px';
+                    ann.xCss = nx; ann.yCss = ny;
+                }
+            });
+            window.addEventListener('mouseup', ()=>{ dragging=false; draggingBody=false; handle.style.cursor='grab'; tb.classList.remove('moving'); });
+
+            // Keep editing always enabled; dragging uses preventDefault on mousedown
+            remove.addEventListener('click', ()=>{
+                const pageAnns = getAnnotations(currentPageIndex);
+                const idx = pageAnns.findIndex(a=>a.id===ann.id);
+                if (idx>=0) pageAnns.splice(idx,1);
+                tb.remove();
+            });
+            // Keep handle visible while typing/editing
+            tb.addEventListener('focusin', ()=>{ tb.classList.add('editing'); tb.style.color = '#111'; tb.style.webkitTextFillColor = '#111'; tb.style.caretColor = '#111'; const h = tb.querySelector('.handle'); if (h && !ann.locked) h.style.display = 'block'; });
+            tb.addEventListener('focusout', ()=>{ tb.classList.remove('editing'); if (!ann.locked) { tb.classList.add('unconfirmed'); const h = tb.querySelector('.handle'); if (h) h.style.display = 'block'; } });
+            tb.addEventListener('input', ()=>{ ann.text = getCleanTextFromBox(tb); tb.style.color = ann.color || textDefaults.color; tb.style.webkitTextFillColor = ann.color || textDefaults.color; const h = tb.querySelector('.handle'); if (h && !ann.locked) h.style.display = 'block'; });
+            // Font size shortcuts: Cmd/Ctrl + +/- to adjust current box size
+            tb.addEventListener('keydown', (e)=>{
+                const mod = e.metaKey || e.ctrlKey;
+                if (!mod) return;
+                if (e.key === '+' || e.key === '=' || (e.key === 'ArrowUp' && e.shiftKey)){
+                    e.preventDefault();
+                    ann.fontSize = Math.min(72, (ann.fontSize||textDefaults.fontSize) + 1);
+                    tb.style.fontSize = ann.fontSize + 'px';
+                }
+                if (e.key === '-' || (e.key === 'ArrowDown' && e.shiftKey)){
+                    e.preventDefault();
+                    ann.fontSize = Math.max(6, (ann.fontSize||textDefaults.fontSize) - 1);
+                    tb.style.fontSize = ann.fontSize + 'px';
+                }
+            });
+            confirm.addEventListener('click', ()=>{
+                // Lock content and position; disable editing and dragging
+                tb.contentEditable = 'false';
+                tb.classList.remove('moving');
+                tb.style.borderStyle = 'solid';
+                handle.style.display = 'none';
+                confirm.style.display = 'none';
+                // Persist latest text and coords (exclude controls)
+                ann.text = getCleanTextFromBox(tb);
+                ann.xCss = tb.offsetLeft; ann.yCss = tb.offsetTop;
+                ann.locked = true;
+                tb.classList.remove('unconfirmed');
+            });
+        }
+
+        function addTextAnnotation(xCss, yCss){
+            const id = 'ann_' + Math.random().toString(36).slice(2,9);
+            const ann = { id, xCss: Number.isFinite(xCss)?xCss:20, yCss: Number.isFinite(yCss)?yCss:20, text: 'Type here', fontSize: Number(textSizeInput.value)||textDefaults.fontSize, color: textColorInput.value || textDefaults.color, font: textFontSelect.value || textDefaults.font, style: textStyleSelect.value || textDefaults.style };
+            getAnnotations(currentPageIndex).push(ann);
+            renderAnnotationEl(ann);
+            // focus newly created textbox
+            const wrap = document.querySelector('.canvaswrap');
+            const last = wrap.querySelector('.text-box[data-id="'+ann.id+'"]');
+            if (last) { last.focus(); }
+        }
+
+        function insertTextAtCss(xCss, yCss){
+            addTextAnnotation(xCss, yCss);
+        }
+
+        addTextBtn.addEventListener('click', () => addTextAnnotation());
+        textModeBtn.addEventListener('click', () => { isTextMode = !isTextMode; textModeBtn.setAttribute('aria-pressed', String(isTextMode)); textModeBtn.classList.toggle('active', isTextMode); canvas.style.cursor = isTextMode ? 'text' : 'none'; cursorEl.style.display = isTextMode ? 'none' : 'block'; });
+        window.addEventListener('keydown', (e)=>{ if ((e.key==='t' || e.key==='T') && !(e.metaKey||e.ctrlKey||e.altKey)){ e.preventDefault(); textModeBtn.click(); }});
+
+        clearBtn.addEventListener('click', async () => {
+            // Clear current page drawings and annotations
+            strokesByPage[currentPageIndex] = [];
+            redoByPage[currentPageIndex] = [];
+            annotationsByPage[currentPageIndex] = [];
+            await refreshView();
+        });
 
         undoBtn.addEventListener('click', async () => {
-            if (strokes.length === 0) return;
-            const s = strokes.pop();
-            redoStack.push(s);
+            const paths = getStrokes(currentPageIndex);
+            if (paths.length === 0) return;
+            const s = paths.pop();
+            getRedo(currentPageIndex).push(s);
             await refreshView();
         });
 
         redoBtn.addEventListener('click', async () => {
-            if (redoStack.length === 0) return;
-            const s = redoStack.pop();
-            strokes.push(s);
+            const r = getRedo(currentPageIndex);
+            if (r.length === 0) return;
+            const s = r.pop();
+            getStrokes(currentPageIndex).push(s);
             await refreshView();
         });
 
@@ -209,7 +470,6 @@
             const file = input.files[0]; if (!file) return;
             const buf = await file.arrayBuffer();
             await loadPdf(buf);
-            // allow re-selecting same file to trigger change again
             input.value = '';
         });
 
@@ -236,28 +496,97 @@
         });
         // Prevent bubbling from input
         input.addEventListener('click', (e) => { e.stopPropagation(); });
-        
-        
 
         downloadBtn.addEventListener('click', async () => {
-            if (!pdfDoc) return;
-            const { rgb } = window.PDFLib;
-            const page = pdfDoc.getPage(currentPageIndex);
-            // draw strokes onto the PDF page
-            strokes.forEach(path => {
-                if (path.length < 2) return;
-                // Map canvas Y (top-left origin) to PDF Y (bottom-left origin)
-                const points = path.map(p => ({ x: p.x, y: canvas.height - p.y }));
-                for (let i=1;i<points.length;i++) {
-                    page.drawLine({ start: points[i-1], end: points[i], thickness: path.size, color: rgb(10/255, 102/255, 255/255) });
+            try{
+                if (!pdfDoc || !originalPdfBytes) { alert('กรุณาโหลดไฟล์ PDF ก่อน'); return; }
+                const { rgb, StandardFonts, PDFDocument } = window.PDFLib;
+                // Always export from a fresh copy of the original PDF
+                const outDoc = await PDFDocument.load(originalPdfBytes);
+                const pages = outDoc.getPages ? outDoc.getPages() : [];
+                if (!pages || !pages.length){ alert('ไม่พบหน้าสำหรับบันทึก'); return; }
+                // prepare fonts map for selected styles
+                const fontCache = {};
+                async function ensureFont(fontName, style){
+                    const key = fontName + ':' + style;
+                    if (fontCache[key]) return fontCache[key];
+                    let std = StandardFonts.Helvetica;
+                    if (fontName === 'TimesRoman'){
+                        if (style === 'Bold') std = StandardFonts.TimesRomanBold;
+                        else if (style === 'Italic') std = StandardFonts.TimesRomanItalic;
+                        else if (style === 'BoldItalic') std = StandardFonts.TimesRomanBoldItalic;
+                        else std = StandardFonts.TimesRoman;
+                    } else if (fontName === 'Courier'){
+                        if (style === 'Bold') std = StandardFonts.CourierBold;
+                        else if (style === 'Italic') std = StandardFonts.CourierOblique;
+                        else if (style === 'BoldItalic') std = StandardFonts.CourierBoldOblique;
+                        else std = StandardFonts.Courier;
+                    } else { // Helvetica family
+                        if (style === 'Bold') std = StandardFonts.HelveticaBold;
+                        else if (style === 'Italic') std = StandardFonts.HelveticaOblique;
+                        else if (style === 'BoldItalic') std = StandardFonts.HelveticaBoldOblique;
+                        else std = StandardFonts.Helvetica;
+                    }
+                    const f = await outDoc.embedFont(std);
+                    fontCache[key] = f;
+                    return f;
                 }
-            });
-            const bytes = await pdfDoc.save();
-            const blob = new Blob([bytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'signed.pdf'; a.click();
-            setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+                // compute canvas->points scale for current page from actual sizes
+                const size = pages[currentPageIndex].getSize ? pages[currentPageIndex].getSize() : { width: 612, height: 792 };
+                const pageWidthPt = size.width; const pageHeightPt = size.height;
+                const wrap = document.querySelector('.canvaswrap');
+                const wrapRect = wrap.getBoundingClientRect();
+                const cssToCanvasX = canvas.width / (wrapRect.width || 1);
+                const cssToCanvasY = canvas.height / (wrapRect.height || 1);
+                const canvasToPtX = pageWidthPt / (canvas.width || 1);
+                const canvasToPtY = pageHeightPt / (canvas.height || 1);
+
+                // Draw strokes for current page
+                getStrokes(currentPageIndex).forEach(path => {
+                    if (!path || !path.points || path.points.length < 2) return;
+                    const thicknessPt = path.size * canvasToPtX;
+                    for (let i=1;i<path.points.length;i++){
+                        const p0 = path.points[i-1];
+                        const p1 = path.points[i];
+                        const start = { x: p0.x * canvasToPtX, y: pageHeightPt - (p0.y * canvasToPtY) };
+                        const end = { x: p1.x * canvasToPtX, y: pageHeightPt - (p1.y * canvasToPtY) };
+                        pages[currentPageIndex].drawLine({ start, end, thickness: thicknessPt, color: rgb(10/255, 102/255, 255/255) });
+                    }
+                });
+
+                // Draw text annotations for current page
+                for (const ann of getAnnotations(currentPageIndex)){
+                    const xCanvas = Math.max(0, (ann.xCss || 0)) * cssToCanvasX;
+                    const yCanvasTop = Math.max(0, (ann.yCss || 0)) * cssToCanvasY;
+                    const textRaw = (ann.text || '').replace(/\s+$/,'');
+                    if (!textRaw) continue;
+                    const lines = textRaw.split(/\n/);
+                    const fontSize = Math.max(6, Math.min(72, ann.fontSize || 14));
+                    const colorHex = (ann.color || '#111111').replace('#','');
+                    const r = parseInt(colorHex.substring(0,2),16)/255;
+                    const g = parseInt(colorHex.substring(2,4),16)/255;
+                    const b = parseInt(colorHex.substring(4,6),16)/255;
+                    const font = await ensureFont(ann.font || 'Helvetica', ann.style || 'Normal');
+                    const lineGap = Math.round(fontSize * 1.2);
+                    for (let i=0;i<lines.length;i++){
+                        // Position baseline inside the box; clamp into page bounds
+                        const yPdf = Math.max(0, Math.min(pageHeightPt, pageHeightPt - ((yCanvasTop + lineGap*(i+0.8)) * canvasToPtY)));
+                        const xPdf = Math.max(0, Math.min(pageWidthPt, xCanvas * canvasToPtX));
+                        pages[currentPageIndex].drawText(lines[i], { x: xPdf, y: yPdf, size: fontSize, color: rgb(r,g,b), font });
+                    }
+                }
+
+                const bytes = await outDoc.save();
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'signed.pdf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(()=>URL.revokeObjectURL(url),1000);
+            }catch(err){ console.error(err); alert('ไม่สามารถดาวน์โหลดได้: ' + (err && err.message ? err.message : String(err))); }
         });
     </script>
     </body>
